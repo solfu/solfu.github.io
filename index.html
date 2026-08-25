@@ -12,9 +12,15 @@
   input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
   button { background: #007acc; cursor: pointer; font-weight: bold; }
   button:hover { background: #005999; }
+  .download-zip-btn { background: #28a745; display: none; margin-top: 15px; }
+  .download-zip-btn:hover { background: #218838; }
   #log { background: #000; padding: 10px; font-family: monospace; height: 150px; overflow-y: auto; border: 1px solid #333; color: #00ff00; }
-  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-  .layer-card { border: 1px solid #444; padding: 5px; text-align: center; border-radius: 4px; background: #252525; }
+  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
+  .layer-card { border: 1px solid #444; padding: 10px; text-align: center; border-radius: 6px; background: #252525; display: flex; flex-direction: column; align-items: center; justify: space-between; }
+  .layer-card svg { width: 100px; height: 100px; background: #1a1a1a; border-radius: 4px; margin-bottom: 8px; }
+  .layer-card small { display: block; margin-bottom: 8px; word-break: break-word; color: #ccc; }
+  .card-btn { padding: 6px 10px; font-size: 12px; background: #007acc; border: none; border-radius: 4px; color: #fff; cursor: pointer; }
+  .card-btn:hover { background: #005999; }
 </style>
 </head>
 <body>
@@ -27,8 +33,9 @@
   </div>
 
   <div class="box">
-    <h3>2. Raw Layers Extractor (No Token ID Needed)</h3>
-    <button onclick="extractAllLayers()">Extract & Download All Layers (.ZIP)</button>
+    <h3>2. Raw Layers Extractor</h3>
+    <button onclick="extractAllLayers()">Extract & Show All Layers</button>
+    <button id="zipBtn" class="download-zip-btn" onclick="downloadAllZip()">Download All as ZIP</button>
   </div>
 
   <div class="box">
@@ -42,11 +49,12 @@
   </div>
 
 <script>
-  // ABI matching LibAppStorage Trait Struct & Facet Read Functions
   const CONTRACT_ABI = [
     "function getTrait(uint256 _traitTypeIndex, uint256 _traitIndex) external view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
     "function getTraitAmount(uint256 _traitTypeIndex) external view returns (uint256)"
   ];
+
+  let extractedLayers = []; // Download data store করার জন্য
 
   function log(msg) {
     const l = document.getElementById('log');
@@ -54,7 +62,6 @@
     l.scrollTop = l.scrollHeight;
   }
 
-  // Raw Pixel Data to SVG Renderer Function
   function buildSvgFromPixels(pixels, pixelCount) {
     let rects = "";
     let ptr = 0;
@@ -62,7 +69,7 @@
       const count = pixelCount[i];
       const color = pixels[i];
       for (let j = 0; j < count; j++) {
-        const x = ptr % 32; // Assuming standard 32x32 pixel grid
+        const x = ptr % 32;
         const y = Math.floor(ptr / 32);
         rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" />`;
         ptr++;
@@ -77,13 +84,16 @@
       const addr = document.getElementById('contractAddr').value;
       if (!addr) return alert("Contract address is required!");
 
+      const previewEl = document.getElementById('preview');
+      previewEl.innerHTML = '';
+      extractedLayers = [];
+      document.getElementById('zipBtn').style.display = 'none';
+
       const provider = new ethers.providers.JsonRpcProvider(rpc);
       const contract = new ethers.Contract(addr, CONTRACT_ABI, provider);
 
-      const zip = new JSZip();
       log("Connecting to Contract...");
 
-      // Assuming up to 10 Trait Categories (e.g. Background, Eyes, Hats etc.)
       for (let typeIdx = 0; typeIdx < 10; typeIdx++) {
         try {
           const totalInType = await contract.getTraitAmount(typeIdx);
@@ -94,35 +104,61 @@
           for (let traitIdx = 0; traitIdx < totalInType; traitIdx++) {
             const trait = await contract.getTrait(typeIdx, traitIdx);
             
-            // Generate Raw SVG string from structural pixel data
             const svgContent = buildSvgFromPixels(trait.pixels, trait.pixelCount);
-            
             const folderName = trait.traitType || `Category_${typeIdx}`;
             const fileName = `${trait.traitName || `Trait_${traitIdx}`}.svg`;
 
-            // Add SVG File to ZIP under Category Folder
-            zip.folder(folderName).file(fileName, svgContent);
+            // Data array তে store করে রাখা হচ্ছে
+            const layerData = { folderName, fileName, svgContent };
+            extractedLayers.push(layerData);
 
-            // Append Preview Card
-            const previewEl = document.getElementById('preview');
+            // UI তে Card আকারে দেখানোর জন্য HTML তৈরি
             const card = document.createElement('div');
             card.className = 'layer-card';
-            card.innerHTML = `${svgContent}<small>${folderName}/<br>${trait.traitName}</small>`;
+            card.innerHTML = `
+              ${svgContent}
+              <small><b>${folderName}</b><br>${trait.traitName || `Trait_${traitIdx}`}</small>
+              <button class="card-btn" onclick="downloadSingleSvg(${extractedLayers.length - 1})">Download SVG</button>
+            `;
             previewEl.appendChild(card);
           }
         } catch (e) {
-          // Break when non-existent trait category is reached
           break;
         }
       }
 
-      log("Compressing layers into ZIP...");
-      const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "OnChain_Raw_Layers.zip");
-      log("Layers successfully downloaded!");
+      if (extractedLayers.length > 0) {
+        log(`Extracted total ${extractedLayers.length} layers successfully!`);
+        document.getElementById('zipBtn').style.display = 'block';
+      } else {
+        log("No layers found or error reading traits.");
+      }
+
     } catch (err) {
       log(`Error: ${err.message}`);
     }
+  }
+
+  // সিঙ্গেল SVG ফাইল ডাউনলোড করার ফাংশন
+  function downloadSingleSvg(index) {
+    const item = extractedLayers[index];
+    const blob = new Blob([item.svgContent], { type: "image/svg+xml;charset=utf-8" });
+    saveAs(blob, item.fileName);
+  }
+
+  // সব ফাইল একসাথে ZIP করে ডাউনলোড করার ফাংশন
+  async function downloadAllZip() {
+    if (extractedLayers.length === 0) return;
+    log("Compressing layers into ZIP...");
+    const zip = new JSZip();
+
+    extractedLayers.forEach(item => {
+      zip.folder(item.folderName).file(item.fileName, item.svgContent);
+    });
+
+    const content = await zip.generateAsync({ type: "blob" });
+    saveAs(content, "OnChain_Raw_Layers.zip");
+    log("ZIP file downloaded successfully!");
   }
 </script>
 </body>

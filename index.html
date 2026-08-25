@@ -1,168 +1,833 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en" class="dark">
 <head>
-<meta charset="UTF-8">
-<title>NFT On-Chain Layer Extractor</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-<style>
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f111a; color: #eceff4; padding: 20px; }
-  .box { background: #1a1c23; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #2e3440; }
-  input, button { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; background: #2e3440; color: #fff; border: 1px solid #4c566a; border-radius: 6px; font-size: 14px; }
-  button { background: #5e81ac; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
-  button:hover { background: #81a1c1; }
-  .download-zip-btn { background: #a3be8c; display: none; margin-top: 15px; color: #2e3440; }
-  .download-zip-btn:hover { background: #8fbcbb; }
-  #log { background: #000; padding: 12px; font-family: monospace; height: 140px; overflow-y: auto; border: 1px solid #3b4252; color: #a3be8c; border-radius: 6px; font-size: 13px; }
-  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
-  .layer-card { border: 1px solid #3b4252; padding: 12px; text-align: center; border-radius: 8px; background: #242933; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
-  .layer-card svg { width: 120px; height: 120px; background: #1a1c23; border-radius: 6px; margin-bottom: 10px; border: 1px solid #3b4252; }
-  .layer-card small { display: block; margin-bottom: 10px; word-break: break-word; color: #d8dee9; font-size: 12px; }
-  .card-btn { padding: 8px 12px; font-size: 12px; background: #5e81ac; border: none; border-radius: 4px; color: #fff; cursor: pointer; width: 100%; }
-  .card-btn:hover { background: #81a1c1; }
-</style>
-</head>
-<body>
-  <h2>🎨 NFT On-Chain Layer Extractor (EIP-2535 Diamond)</h2>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZIP Layer Explorer</title>
   
-  <div class="box">
-    <h3>১. নেটওয়ার্ক ও কন্ট্রাক্ট ঠিকানা দিন</h3>
-    <input id="rpcUrl" placeholder="RPC URL (যেমন: https://rpc.ankr.com/eth বা Base/Arbitrum RPC)" value="https://rpc.ankr.com/eth">
-    <input id="contractAddr" placeholder="ডিপ্লয়কৃত Diamond Contract Address (0x...)">
-  </div>
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Prism JS (Code Syntax Highlighting) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-solidity.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markdown.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
 
-  <div class="box">
-    <h3>২. অন-চেইন লেয়ার এক্সট্র্যাক্ট করুন</h3>
-    <button onclick="extractAllLayers()">অন-চেইন লেয়ার এক্সট্র্যাক্ট করুন</button>
-    <button id="zipBtn" class="download-zip-btn" onclick="downloadAllZip()">সবগুলো একসাথে জিপ (ZIP) আকারে ডাউনলোড করুন</button>
-  </div>
+  <!-- JSZip Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-  <div class="box">
-    <h3>৩. প্রসেস লগ</h3>
-    <div id="log">কন্ট্রাক্ট এড্রেস দিয়ে শুরু করুন...<br></div>
-  </div>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-  <div class="box">
-    <h3>নিচে সবগুলো লেয়ার কার্ড আকারে দেখা যাবে</h3>
-    <div id="preview" class="layer-grid"></div>
-  </div>
-
-<script>
-  // LibAppStorage এ নির্ধারিত Trait Struct অনুযায়ী ABI
-  const CONTRACT_ABI = [
-    "function getTrait(uint256 _traitTypeIndex, uint256 _traitIndex) external view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
-    "function getTraitAmount(uint256 _traitTypeIndex) external view returns (uint256)"
-  ];
-
-  let extractedLayers = [];
-
-  function log(msg) {
-    const l = document.getElementById('log');
-    l.innerHTML += `> ${msg}<br>`;
-    l.scrollTop = l.scrollHeight;
-  }
-
-  // Raw Pixel Data থেকে SVG তৈরি করার ইঞ্জিনিয়ারিং ফাংশন
-  function buildSvgFromPixels(pixels, pixelCount) {
-    let rects = "";
-    let ptr = 0;
-    for (let i = 0; i < pixelCount.length; i++) {
-      const count = pixelCount[i];
-      const color = pixels[i];
-      for (let j = 0; j < count; j++) {
-        const x = ptr % 32;
-        const y = Math.floor(ptr / 32);
-        if (color !== "" && color !== "none" && color !== "transparent") {
-          rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" />`;
-        }
-        ptr++;
-      }
-    }
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">${rects}</svg>`;
-  }
-
-  async function extractAllLayers() {
-    try {
-      const rpc = document.getElementById('rpcUrl').value;
-      const addr = document.getElementById('contractAddr').value;
-      if (!addr) return alert("কন্ট্রাক্ট এড্রেস দেওয়া বাধ্যতামূলক!");
-
-      const previewEl = document.getElementById('preview');
-      previewEl.innerHTML = '';
-      extractedLayers = [];
-      document.getElementById('zipBtn').style.display = 'none';
-
-      const provider = new ethers.providers.JsonRpcProvider(rpc);
-      const contract = new ethers.Contract(addr, CONTRACT_ABI, provider);
-
-      log("ব্লকচেইন কন্ট্রাক্টের সাথে যুক্ত হচ্ছে...");
-
-      // Trait টাইপ ক্যাটাগরি লুপ (সর্বোচ্চ ১৫টি ক্যাটাগরি পর্যন্ত রিড করবে)
-      for (let typeIdx = 0; typeIdx < 15; typeIdx++) {
-        try {
-          const totalInType = await contract.getTraitAmount(typeIdx);
-          if (totalInType == 0) continue;
-
-          log(`ক্যাটাগরি ইনডেক্স ${typeIdx}-এ মোট ${totalInType} টি ট্রেইট পাওয়া গেছে`);
-
-          for (let traitIdx = 0; traitIdx < totalInType; traitIdx++) {
-            const trait = await contract.getTrait(typeIdx, traitIdx);
-            
-            const svgContent = buildSvgFromPixels(trait.pixels, trait.pixelCount);
-            const folderName = trait.traitType || `Category_${typeIdx}`;
-            const fileName = `${trait.traitName || `Trait_${traitIdx}`}.svg`;
-
-            const layerData = { folderName, fileName, svgContent };
-            extractedLayers.push(layerData);
-
-            // ওয়েবসাইটে কার্ড আকারে লেয়ার রেন্ডার
-            const card = document.createElement('div');
-            card.className = 'layer-card';
-            card.innerHTML = `
-              ${svgContent}
-              <small><b>টাইপ: ${folderName}</b><br>নাম: ${trait.traitName || `Trait_${traitIdx}`}</small>
-              <button class="card-btn" onclick="downloadSingleSvg(${extractedLayers.length - 1})">SVG ডাউনলোড</button>
-            `;
-            previewEl.appendChild(card);
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            accent: '#39FF14', // Electric Lime
+            'accent-hover': '#32D710',
+            dark: {
+              bg: '#0B0F17',
+              card: '#121824',
+              border: '#1E293B',
+              hover: '#1B2436'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['Fira Code', 'monospace']
           }
-        } catch (e) {
-          // কোনো ক্যাটাগরি না থাকলে লুপ থেকে বের হবে
-          break;
         }
       }
-
-      if (extractedLayers.length > 0) {
-        log(`মোট ${extractedLayers.length} টি অন-চেইন লেয়ার এক্সট্র্যাক্ট করা সম্পন্ন হয়েছে!`);
-        document.getElementById('zipBtn').style.display = 'block';
-      } else {
-        log("কোনো লেয়ার পাওয়া যায়নি। দয়া করে সঠিক Contract Address ও RPC নেটওয়ার্ক নিশ্চিত করুন।");
-      }
-
-    } catch (err) {
-      log(`ত্রুটি: ${err.message}`);
     }
-  }
+  </script>
 
-  function downloadSingleSvg(index) {
-    const item = extractedLayers[index];
-    const blob = new Blob([item.svgContent], { type: "image/svg+xml;charset=utf-8" });
-    saveAs(blob, item.fileName);
-  }
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .glass-panel {
+        background: rgba(18, 24, 36, 0.7);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .glass-card {
+        background: rgba(25, 33, 50, 0.5);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+      }
+    }
 
-  async function downloadAllZip() {
-    if (extractedLayers.length === 0) return;
-    log("ফাইলগুলো দিয়ে ZIP কম্প্রেস করা হচ্ছে...");
-    const zip = new JSZip();
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B0F17;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E293B;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #39FF14;
+    }
+  </style>
+</head>
+<body class="bg-dark-bg text-slate-200 font-sans min-h-screen flex flex-col antialiased selection:bg-accent selection:text-black">
 
-    extractedLayers.forEach(item => {
-      zip.folder(item.folderName).file(item.fileName, item.svgContent);
+  <!-- Navigation Header -->
+  <header class="border-b border-dark-border bg-dark-bg/80 sticky top-0 z-40 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-accent/10 border border-accent/30 p-2 rounded-xl text-accent">
+          <i data-lucide="layers" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-wide text-white font-mono">ZIP LAYER<span class="text-accent">_</span>EXPLORER</span>
+          <span class="hidden sm:inline-block ml-2 text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">v1.0.0</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2 text-xs text-slate-400 bg-dark-card border border-dark-border px-3 py-1.5 rounded-full">
+          <i data-lucide="shield-check" class="w-4 h-4 text-accent"></i>
+          <span>Client-Side Privacy</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
+
+    <!-- Screen 1: Upload View -->
+    <div id="uploadView" class="flex-grow flex flex-col justify-center items-center py-12">
+      <div class="w-full max-w-2xl">
+        <!-- Main Dropzone -->
+        <div id="dropZone" class="glass-panel rounded-2xl p-8 sm:p-12 text-center border-2 border-dashed border-slate-700 hover:border-accent/60 transition-all duration-300 group cursor-pointer relative overflow-hidden shadow-2xl">
+          <div class="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+          <input type="file" id="fileInput" accept=".zip" class="hidden">
+          
+          <div class="relative z-10 flex flex-col items-center">
+            <div class="w-20 h-20 mb-6 rounded-2xl bg-dark-card border border-dark-border flex items-center justify-center text-accent group-hover:scale-110 transition-transform duration-300 group-hover:border-accent/40 shadow-inner">
+              <i data-lucide="upload-cloud" class="w-10 h-10"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Drop your ZIP archive here</h2>
+            <p class="text-slate-400 text-sm mb-6 max-w-sm">Drag and drop any standard .zip file or click to browse files on your device</p>
+            
+            <button class="bg-accent hover:bg-accent-hover text-black font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-accent/20 flex items-center space-x-2 font-mono text-sm">
+              <i data-lucide="folder-open" class="w-4 h-4"></i>
+              <span>Select File</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Progress Indicator -->
+        <div id="uploadProgress" class="hidden mt-6 glass-card p-4 rounded-xl">
+          <div class="flex justify-between text-sm mb-2 font-mono">
+            <span id="progressText" class="text-slate-300">Extracting structure...</span>
+            <span id="progressPercent" class="text-accent">0%</span>
+          </div>
+          <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div id="progressBar" class="bg-accent h-full w-0 transition-all duration-150"></div>
+          </div>
+        </div>
+
+        <!-- Privacy & Security Notice -->
+        <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="glass-card p-4 rounded-xl border border-slate-800/80 flex items-start space-x-3">
+            <i data-lucide="lock" class="w-5 h-5 text-accent shrink-0 mt-0.5"></i>
+            <div>
+              <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider mb-1">Local Processing</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Your ZIP is parsed entirely within your browser JS memory. Files are never transmitted to any external server.</p>
+            </div>
+          </div>
+          <div class="glass-card p-4 rounded-xl border border-slate-800/80 flex items-start space-x-3">
+            <i data-lucide="shield-alert" class="w-5 h-5 text-accent shrink-0 mt-0.5"></i>
+            <div>
+              <h4 class="text-xs font-semibold text-slate-200 uppercase tracking-wider mb-1">Sandbox Protection</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Zip Slip prevention enabled. File content is fully isolated without code execution capability.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Dashboard & Explorer View -->
+    <div id="explorerView" class="hidden flex-grow flex-col space-y-4">
+      
+      <!-- Top Stats & Controls Dashboard -->
+      <div class="glass-panel rounded-2xl p-4 sm:p-6 shadow-xl border border-dark-border">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          
+          <!-- File Overview Stats -->
+          <div class="flex flex-wrap items-center gap-4">
+            <div class="bg-dark-card border border-slate-800 px-4 py-2.5 rounded-xl flex items-center space-x-3">
+              <i data-lucide="file-archive" class="w-6 h-6 text-accent"></i>
+              <div>
+                <p class="text-xs text-slate-400 font-mono">ZIP ARCHIVE</p>
+                <p id="dashFileName" class="text-sm font-semibold text-white font-mono truncate max-w-[200px]">archive.zip</p>
+              </div>
+            </div>
+
+            <div class="flex items-center space-x-6 px-2">
+              <div>
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Files</p>
+                <p id="dashFileCount" class="text-lg font-bold text-white font-mono">0</p>
+              </div>
+              <div class="h-8 w-[1px] bg-slate-800"></div>
+              <div>
+                <p class="text-xs text-slate-400 uppercase tracking-wider">Folders</p>
+                <p id="dashFolderCount" class="text-lg font-bold text-white font-mono">0</p>
+              </div>
+              <div class="h-8 w-[1px] bg-slate-800"></div>
+              <div>
+                <p class="text-xs text-slate-400 uppercase tracking-wider">ZIP Size</p>
+                <p id="dashZipSize" class="text-lg font-bold text-accent font-mono">0 KB</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btnExpandAll" class="px-3 py-2 bg-dark-card hover:bg-dark-hover border border-slate-700/80 rounded-xl text-xs font-medium text-slate-300 flex items-center space-x-1.5 transition">
+              <i data-lucide="chevrons-down" class="w-3.5 h-3.5"></i>
+              <span>Expand All</span>
+            </button>
+            <button id="btnCollapseAll" class="px-3 py-2 bg-dark-card hover:bg-dark-hover border border-slate-700/80 rounded-xl text-xs font-medium text-slate-300 flex items-center space-x-1.5 transition">
+              <i data-lucide="chevrons-up" class="w-3.5 h-3.5"></i>
+              <span>Collapse All</span>
+            </button>
+            <button id="btnDownloadSelected" class="px-3 py-2 bg-dark-card hover:bg-dark-hover border border-slate-700/80 rounded-xl text-xs font-medium text-slate-300 flex items-center space-x-1.5 transition">
+              <i data-lucide="check-square" class="w-3.5 h-3.5 text-accent"></i>
+              <span>Download Selected</span>
+            </button>
+            <button id="btnDownloadFull" class="px-3.5 py-2 bg-accent hover:bg-accent-hover text-black font-semibold rounded-xl text-xs flex items-center space-x-1.5 transition shadow-lg shadow-accent/10">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i>
+              <span>Download ZIP</span>
+            </button>
+            <button id="btnReset" class="px-3 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-xs font-medium text-red-400 flex items-center space-x-1.5 transition">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              <span>Remove ZIP</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Explorer Workspace Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow">
+        
+        <!-- Left Column: File Tree Explorer -->
+        <div class="lg:col-span-5 glass-panel rounded-2xl flex flex-col h-[600px] overflow-hidden border border-dark-border">
+          
+          <!-- Tree Search Bar -->
+          <div class="p-3 border-b border-dark-border bg-dark-card/50">
+            <div class="relative">
+              <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
+              <input type="text" id="searchInput" placeholder="Search files and folders..." class="w-full bg-dark-bg border border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-accent font-mono">
+            </div>
+          </div>
+
+          <!-- Tree Header Controls -->
+          <div class="px-4 py-2 border-b border-dark-border/50 bg-dark-bg/40 flex items-center justify-between text-xs text-slate-400 font-mono">
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="selectAllCheckbox" checked class="rounded bg-dark-bg border-slate-700 text-accent focus:ring-accent accent-accent">
+              <span>Select / Deselect All</span>
+            </div>
+            <span id="selectedCountText">0 selected</span>
+          </div>
+
+          <!-- Scrollable Tree Structure -->
+          <div id="treeContainer" class="flex-grow overflow-y-auto p-2 font-mono text-xs">
+            <!-- Dynamic Tree Nodes Render Here -->
+          </div>
+        </div>
+
+        <!-- Right Column: File Preview Panel -->
+        <div class="lg:col-span-7 glass-panel rounded-2xl flex flex-col h-[600px] overflow-hidden border border-dark-border">
+          
+          <!-- Panel Header -->
+          <div class="px-4 py-3 border-b border-dark-border bg-dark-card/50 flex items-center justify-between">
+            <div class="flex items-center space-x-2 truncate">
+              <i data-lucide="file-text" id="previewHeaderIcon" class="w-4 h-4 text-slate-400"></i>
+              <span id="previewFileName" class="text-xs font-mono font-semibold text-slate-200 truncate">No file selected</span>
+            </div>
+            <span id="previewFileSize" class="text-xs font-mono text-slate-500"></span>
+          </div>
+
+          <!-- Preview Content Box -->
+          <div id="previewBody" class="flex-grow overflow-auto p-4 bg-dark-bg/60 relative">
+            
+            <!-- Default Empty State -->
+            <div id="previewPlaceholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-500">
+              <i data-lucide="code" class="w-12 h-12 mb-3 stroke-1 text-slate-600"></i>
+              <p class="text-sm font-medium text-slate-400">Select a supported file to preview</p>
+              <p class="text-xs text-slate-600 mt-1 max-w-xs">Supports .sol, .json, .js, .ts, .html, .css, .md, .png, .jpg, .svg, and more.</p>
+            </div>
+
+            <!-- Code/Text Sandbox View -->
+            <pre id="previewCodeContainer" class="hidden font-mono text-xs text-slate-300 leading-relaxed !bg-transparent !m-0 !p-0"><code id="previewCode" class="language-none"></code></pre>
+
+            <!-- Image View -->
+            <div id="previewImageContainer" class="hidden h-full flex items-center justify-center p-4">
+              <img id="previewImage" src="" alt="Preview" class="max-h-full max-w-full object-contain rounded border border-slate-800 shadow-lg">
+            </div>
+
+            <!-- Unavailable View -->
+            <div id="previewUnavailable" class="hidden absolute inset-0 flex flex-col items-center justify-center p-6 text-center text-slate-500">
+              <i data-lucide="file-x-2" class="w-12 h-12 mb-3 stroke-1 text-slate-600"></i>
+              <p class="text-sm font-medium text-slate-400">Preview unavailable</p>
+              <p class="text-xs text-slate-600 mt-1">Binary or unhandled format. Use the download button to extract.</p>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Application JS Architecture -->
+  <script>
+    // System State Management
+    let zipData = {
+      name: '',
+      size: 0,
+      filesCount: 0,
+      foldersCount: 0,
+      rawZip: null,
+      treeRoot: null,
+      fileMap: new Map() // relativePath -> JSZipObject
+    };
+
+    let selectedPaths = new Set();
+    let expandedPaths = new Set();
+    let currentSearchTerm = '';
+    let activePreviewPath = null;
+
+    // Allowed File Ext Extensions for Text Syntax Highlighting
+    const EXTENSION_MAP = {
+      'sol': 'solidity',
+      'json': 'json',
+      'js': 'javascript',
+      'ts': 'typescript',
+      'html': 'markup',
+      'css': 'css',
+      'svg': 'markup',
+      'md': 'markdown',
+      'txt': 'none',
+      'yaml': 'yaml',
+      'yml': 'yaml'
+    };
+
+    const IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'ico'];
+
+    // DOM Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadView = document.getElementById('uploadView');
+    const explorerView = document.getElementById('explorerView');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressBar = document.getElementById('progressBar');
+    const progressPercent = document.getElementById('progressPercent');
+    const progressText = document.getElementById('progressText');
+
+    // Setup Lucide Icons
+    lucide.createIcons();
+
+    // Event Listeners: Drag & Drop
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-accent');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-accent'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-accent');
+      if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
     });
 
-    const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, "NFT_OnChain_Layers.zip");
-    log("ZIP ফাইল ডাউনলোড সম্পন্ন হয়েছে!");
-  }
-</script>
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length > 0) handleFileSelect(e.target.files[0]);
+    });
+
+    // Reset Engine
+    document.getElementById('btnReset').addEventListener('click', resetApp);
+
+    // File Processing Entry Point
+    async function handleFileSelect(file) {
+      if (!file.name.toLowerCase().endsWith('.zip')) {
+        alert('Security Error: Only .zip files are allowed.');
+        return;
+      }
+
+      uploadProgress.classList.remove('hidden');
+      updateProgress(20, 'Reading file buffer...');
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        updateProgress(50, 'Parsing ZIP structure safely...');
+        
+        // JSZip extraction
+        const zip = new JSZip();
+        const loadedZip = await zip.loadAsync(arrayBuffer);
+        
+        zipData.name = sanitizeFilename(file.name);
+        zipData.size = file.size;
+        zipData.rawZip = loadedZip;
+        zipData.fileMap.clear();
+
+        updateProgress(80, 'Constructing file layers...');
+        
+        // Build Tree structure with Zip Slip prevention checks
+        buildFileSystemTree(loadedZip);
+
+        updateProgress(100, 'Complete');
+        
+        setTimeout(() => {
+          uploadProgress.classList.add('hidden');
+          uploadView.classList.add('hidden');
+          explorerView.classList.remove('hidden');
+          explorerView.classList.add('flex');
+          renderDashboard();
+          renderTree();
+        }, 300);
+
+      } catch (error) {
+        alert('Failed to parse ZIP archive: ' + error.message);
+        uploadProgress.classList.add('hidden');
+      }
+    }
+
+    function updateProgress(percent, text) {
+      progressBar.style.width = `${percent}%`;
+      progressPercent.textContent = `${percent}%`;
+      progressText.textContent = text;
+    }
+
+    // Security: Filename Sanitizer
+    function sanitizeFilename(name) {
+      return name.replace(/[^\w\.\-\(\)\s]/gi, '_');
+    }
+
+    // Security: Path Traversal Guard (Zip Slip Protection)
+    function buildFileSystemTree(zip) {
+      const root = { name: 'root', type: 'folder', path: '', children: {}, size: 0 };
+      let totalFiles = 0;
+      let totalFolders = 0;
+
+      selectedPaths.clear();
+      expandedPaths.clear();
+
+      zip.forEach((relativePath, zipEntry) => {
+        // Zip-Slip Attack Check
+        if (relativePath.includes('../') || relativePath.includes('..\\')) {
+          console.warn('Security Block: Malicious path traversal prevented:', relativePath);
+          return;
+        }
+
+        const cleanPath = relativePath.replace(/\/$/, '');
+        if (!cleanPath) return;
+
+        const parts = cleanPath.split('/');
+        let current = root;
+
+        selectedPaths.add(cleanPath);
+        zipData.fileMap.set(cleanPath, zipEntry);
+
+        for (let i = 0; i < parts.length; i++) {
+          const part = parts[i];
+          const isLast = i === parts.length - 1;
+          const currentPath = parts.slice(0, i + 1).join('/');
+
+          if (isLast && !zipEntry.dir) {
+            // File Node
+            current.children[part] = {
+              name: part,
+              type: 'file',
+              path: currentPath,
+              size: zipEntry._data ? zipEntry._data.uncompressedSize : 0,
+              extension: part.includes('.') ? part.split('.').pop().toLowerCase() : ''
+            };
+            totalFiles++;
+          } else {
+            // Directory Node
+            if (!current.children[part]) {
+              current.children[part] = {
+                name: part,
+                type: 'folder',
+                path: currentPath,
+                children: {},
+                size: 0
+              };
+              totalFolders++;
+            }
+            current = current.children[part];
+            expandedPaths.add(currentPath); // Default open
+          }
+        }
+      });
+
+      zipData.treeRoot = root;
+      zipData.filesCount = totalFiles;
+      zipData.foldersCount = totalFolders;
+    }
+
+    // Dashboard Render
+    function renderDashboard() {
+      document.getElementById('dashFileName').textContent = zipData.name;
+      document.getElementById('dashFileCount').textContent = zipData.filesCount;
+      document.getElementById('dashFolderCount').textContent = zipData.foldersCount;
+      document.getElementById('dashZipSize').textContent = formatBytes(zipData.size);
+      updateSelectedCounter();
+    }
+
+    // Byte Formatting Helper
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // Render Tree Explorer
+    function renderTree() {
+      const container = document.getElementById('treeContainer');
+      container.innerHTML = '';
+
+      if (!zipData.treeRoot || Object.keys(zipData.treeRoot.children).length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-slate-500">Archive is empty.</div>`;
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      for (const childKey in zipData.treeRoot.children) {
+        const childNode = renderTreeNode(zipData.treeRoot.children[childKey]);
+        if (childNode) fragment.appendChild(childNode);
+      }
+      container.appendChild(fragment);
+      lucide.createIcons();
+    }
+
+    // Recursive Tree Node Renderer
+    function renderTreeNode(node) {
+      const isSearchActive = currentSearchTerm.trim().length > 0;
+      
+      // Filter matching when search is active
+      if (isSearchActive && !nodeMatchesSearch(node, currentSearchTerm.toLowerCase())) {
+        return null;
+      }
+
+      const element = document.createElement('div');
+      element.className = 'select-none';
+
+      if (node.type === 'folder') {
+        const isExpanded = expandedPaths.has(node.path) || isSearchActive;
+        const folderChildKeys = Object.keys(node.children);
+
+        const folderRow = document.createElement('div');
+        folderRow.className = `flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-dark-hover/70 cursor-pointer group text-slate-300`;
+        
+        folderRow.innerHTML = `
+          <button class="toggle-btn text-slate-500 hover:text-white p-0.5">
+            <i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-3.5 h-3.5"></i>
+          </button>
+          <input type="checkbox" data-path="${node.path}" ${isPathSelected(node) ? 'checked' : ''} class="folder-check rounded bg-dark-bg border-slate-700 text-accent focus:ring-accent accent-accent">
+          <i data-lucide="folder" class="w-4 h-4 text-accent/80 shrink-0"></i>
+          <span class="truncate ${isSearchActive && node.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ? 'text-accent font-bold' : ''}">${escapeHtml(node.name)}</span>
+          <span class="text-[10px] text-slate-500 font-mono ml-auto">(${folderChildKeys.length})</span>
+        `;
+
+        // Folder Expand/Collapse Toggle
+        folderRow.querySelector('.toggle-btn').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (expandedPaths.has(node.path)) {
+            expandedPaths.delete(node.path);
+          } else {
+            expandedPaths.add(node.path);
+          }
+          renderTree();
+        });
+
+        // Folder Checkbox Toggle
+        const checkbox = folderRow.querySelector('.folder-check');
+        checkbox.addEventListener('click', (e) => {
+          e.stopPropagation();
+          togglePathSelection(node, checkbox.checked);
+          renderTree();
+          updateSelectedCounter();
+        });
+
+        element.appendChild(folderRow);
+
+        // Children Container
+        if (isExpanded) {
+          const childrenContainer = document.createElement('div');
+          childrenContainer.className = 'pl-4 border-l border-slate-800/60 ml-3.5 mt-0.5 space-y-0.5';
+          for (const key in node.children) {
+            const childEl = renderTreeNode(node.children[key]);
+            if (childEl) childrenContainer.appendChild(childEl);
+          }
+          element.appendChild(childrenContainer);
+        }
+
+      } else {
+        // File Node UI
+        const isSelected = activePreviewPath === node.path;
+        const fileRow = document.createElement('div');
+        fileRow.className = `flex items-center space-x-2 px-2 py-1 rounded-lg hover:bg-dark-hover/70 cursor-pointer group ${isSelected ? 'bg-accent/10 border border-accent/30 text-white' : 'text-slate-400'}`;
+
+        const fileIcon = getFileIcon(node.extension);
+
+        fileRow.innerHTML = `
+          <div class="w-3.5"></div>
+          <input type="checkbox" data-path="${node.path}" ${selectedPaths.has(node.path) ? 'checked' : ''} class="file-check rounded bg-dark-bg border-slate-700 text-accent focus:ring-accent accent-accent">
+          <i data-lucide="${fileIcon}" class="w-4 h-4 text-slate-400 group-hover:text-accent transition-colors shrink-0"></i>
+          <span class="truncate flex-grow ${isSearchActive && node.name.toLowerCase().includes(currentSearchTerm.toLowerCase()) ? 'text-accent font-bold' : ''}">${escapeHtml(node.name)}</span>
+          <span class="text-[10px] text-slate-500 font-mono shrink-0">${formatBytes(node.size)}</span>
+        `;
+
+        // Click to Preview
+        fileRow.addEventListener('click', (e) => {
+          if (e.target.tagName === 'INPUT') return;
+          activePreviewPath = node.path;
+          renderTree();
+          previewFile(node);
+        });
+
+        // File Checkbox Toggle
+        const checkbox = fileRow.querySelector('.file-check');
+        checkbox.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (checkbox.checked) {
+            selectedPaths.add(node.path);
+          } else {
+            selectedPaths.delete(node.path);
+          }
+          updateSelectedCounter();
+        });
+
+        element.appendChild(fileRow);
+      }
+
+      return element;
+    }
+
+    // Icon Picker Helper
+    function getFileIcon(ext) {
+      if (['sol', 'js', 'ts', 'json', 'html', 'css'].includes(ext)) return 'code';
+      if (['png', 'jpg', 'jpeg', 'svg', 'gif'].includes(ext)) return 'image';
+      if (['md', 'txt'].includes(ext)) return 'file-text';
+      return 'file';
+    }
+
+    // Recursively check search matches
+    function nodeMatchesSearch(node, query) {
+      if (node.name.toLowerCase().includes(query)) return true;
+      if (node.type === 'folder') {
+        for (const key in node.children) {
+          if (nodeMatchesSearch(node.children[key], query)) return true;
+        }
+      }
+      return false;
+    }
+
+    // Toggle Path Selection recursively
+    function togglePathSelection(node, isChecked) {
+      if (isChecked) {
+        selectedPaths.add(node.path);
+      } else {
+        selectedPaths.delete(node.path);
+      }
+
+      if (node.type === 'folder') {
+        for (const key in node.children) {
+          togglePathSelection(node.children[key], isChecked);
+        }
+      }
+    }
+
+    function isPathSelected(node) {
+      if (node.type === 'file') return selectedPaths.has(node.path);
+      // Folder selected if any child selected
+      for (const key in node.children) {
+        if (isPathSelected(node.children[key])) return true;
+      }
+      return false;
+    }
+
+    function updateSelectedCounter() {
+      const counter = document.getElementById('selectedCountText');
+      counter.textContent = `${selectedPaths.size} items selected`;
+    }
+
+    // Safe HTML Escaping
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[m]);
+    }
+
+    // File Preview Handler
+    async function previewFile(node) {
+      const previewName = document.getElementById('previewFileName');
+      const previewSize = document.getElementById('previewFileSize');
+      const previewHeaderIcon = document.getElementById('previewHeaderIcon');
+      
+      const placeholder = document.getElementById('previewPlaceholder');
+      const codeContainer = document.getElementById('previewCodeContainer');
+      const codeEl = document.getElementById('previewCode');
+      const imgContainer = document.getElementById('previewImageContainer');
+      const imgEl = document.getElementById('previewImage');
+      const unavailable = document.getElementById('previewUnavailable');
+
+      // Reset panels
+      placeholder.classList.add('hidden');
+      codeContainer.classList.add('hidden');
+      imgContainer.classList.add('hidden');
+      unavailable.classList.add('hidden');
+
+      previewName.textContent = node.path;
+      previewSize.textContent = formatBytes(node.size);
+      previewHeaderIcon.setAttribute('data-lucide', getFileIcon(node.extension));
+      lucide.createIcons();
+
+      const zipEntry = zipData.fileMap.get(node.path);
+      if (!zipEntry) return;
+
+      const ext = node.extension;
+
+      try {
+        if (IMAGE_EXTENSIONS.includes(ext)) {
+          // Render Image
+          const base64 = await zipEntry.async('base64');
+          const mime = ext === 'svg' ? 'image/svg+xml' : `image/${ext}`;
+          imgEl.src = `data:${mime};base64,${base64}`;
+          imgContainer.classList.remove('hidden');
+
+        } else if (EXTENSION_MAP.hasOwnProperty(ext) || ext === '') {
+          // Render Text/Code
+          const textContent = await zipEntry.async('string');
+          const lang = EXTENSION_MAP[ext] || 'none';
+
+          codeEl.className = `language-${lang}`;
+          codeEl.textContent = textContent;
+
+          // Prism Highlighting execution inside safe boundaries
+          Prism.highlightElement(codeEl);
+          codeContainer.classList.remove('hidden');
+
+        } else {
+          // Render Binary / Unsupported
+          unavailable.classList.remove('hidden');
+        }
+      } catch (err) {
+        unavailable.classList.remove('hidden');
+      }
+    }
+
+    // Download Engine
+    async function downloadZipArchive(selectedOnly = false) {
+      const newZip = new JSZip();
+      let count = 0;
+
+      zipData.fileMap.forEach((entry, path) => {
+        if (!selectedOnly || selectedPaths.has(path)) {
+          if (!entry.dir) {
+            newZip.file(path, entry.async('arraybuffer'));
+            count++;
+          }
+        }
+      });
+
+      if (count === 0) {
+        alert('No files selected for download!');
+        return;
+      }
+
+      const content = await newZip.generateAsync({ type: 'blob' });
+      const downloadUrl = URL.createObjectURL(content);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = selectedOnly ? `selected_${zipData.name}` : zipData.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    }
+
+    // Control Handlers
+    document.getElementById('btnDownloadFull').addEventListener('click', () => downloadZipArchive(false));
+    document.getElementById('btnDownloadSelected').addEventListener('click', () => downloadZipArchive(true));
+
+    document.getElementById('btnExpandAll').addEventListener('click', () => {
+      zipData.fileMap.forEach((_, path) => expandedPaths.add(path));
+      renderTree();
+    });
+
+    document.getElementById('btnCollapseAll').addEventListener('click', () => {
+      expandedPaths.clear();
+      renderTree();
+    });
+
+    document.getElementById('selectAllCheckbox').addEventListener('change', (e) => {
+      if (e.target.checked) {
+        zipData.fileMap.forEach((_, path) => selectedPaths.add(path));
+      } else {
+        selectedPaths.clear();
+      }
+      renderTree();
+      updateSelectedCounter();
+    });
+
+    // Real-Time Search Filtering
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      currentSearchTerm = e.target.value;
+      renderTree();
+    });
+
+    // Reset Engine Action
+    function resetApp() {
+      zipData = { name: '', size: 0, filesCount: 0, foldersCount: 0, rawZip: null, treeRoot: null, fileMap: new Map() };
+      selectedPaths.clear();
+      expandedPaths.clear();
+      activePreviewPath = null;
+      currentSearchTerm = '';
+      
+      document.getElementById('fileInput').value = '';
+      document.getElementById('searchInput').value = '';
+      document.getElementById('previewPlaceholder').classList.remove('hidden');
+      document.getElementById('previewCodeContainer').classList.add('hidden');
+      document.getElementById('previewImageContainer').classList.add('hidden');
+      document.getElementById('previewUnavailable').classList.add('hidden');
+      document.getElementById('previewFileName').textContent = 'No file selected';
+      document.getElementById('previewFileSize').textContent = '';
+
+      explorerView.classList.add('hidden');
+      explorerView.classList.remove('flex');
+      uploadView.classList.remove('hidden');
+    }
+  </script>
 </body>
 </html>

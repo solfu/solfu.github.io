@@ -1,926 +1,267 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZIP Layer Extractor</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- JSZip for Client-Side ZIP processing -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- Prism.js for syntax highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-solidity.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
-
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            lime: '#CCFF00',
-                            dark: '#0A0A0B',
-                            panel: '#121215',
-                            border: '#27272A',
-                            accent: '#18181B'
-                        }
-                    },
-                    fontFamily: {
-                        mono: ['Fira Code', 'Monaco', 'Consolas', 'monospace'],
-                        sans: ['Inter', 'sans-serif']
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        /* Custom scrollbars */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0A0A0B;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #27272A;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #3F3F46;
-        }
-        .indeterminate-checkbox:indeterminate {
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'%3E%3Cpath stroke='%23000' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M4 8h8'/%3E%3C/svg%3E");
-            background-color: #CCFF00;
-            border-color: #CCFF00;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>On-Chain NFT Layer Downloader & Viewer</title>
+  <!-- Ethers.js CDN (v6) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #38bdf8;
+    }
+    p.subtitle {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 25px;
+    }
+    .form-box {
+      background: #1e293b;
+      padding: 20px;
+      border-radius: 12px;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 15px;
+      align-items: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+      margin-bottom: 30px;
+    }
+    input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus {
+      border-color: #38bdf8;
+    }
+    button {
+      background: #0284c7;
+      color: #fff;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0369a1;
+    }
+    .status {
+      text-align: center;
+      font-size: 16px;
+      color: #38bdf8;
+      margin-bottom: 20px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: #38bdf8;
+    }
+    .svg-preview {
+      width: 150px;
+      height: 150px;
+      background: #0f172a;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+      border: 1px dashed #475569;
+      overflow: hidden;
+    }
+    .svg-preview svg {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .trait-type {
+      font-size: 12px;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+    .trait-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 12px;
+      text-align: center;
+    }
+    .download-btn {
+      background: #10b981;
+      width: 100%;
+      font-size: 13px;
+      padding: 8px 0;
+    }
+    .download-btn:hover {
+      background: #059669;
+    }
+  </style>
 </head>
-<body class="bg-brand-dark text-zinc-100 font-sans antialiased min-h-screen flex flex-col selection:bg-brand-lime selection:text-black">
+<body>
 
-    <!-- TOP NAV -->
-    <header class="border-b border-brand-border bg-brand-panel/50 backdrop-blur sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-brand-lime text-black rounded-lg">
-                    <i data-lucide="layers" class="w-5 h-5"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-lg leading-none tracking-tight">ZIP LAYER EXTRACTOR</h1>
-                    <span class="text-xs text-zinc-400 font-mono">100% Client-Side Layer Extraction</span>
-                </div>
-            </div>
-            <div class="flex items-center gap-4 text-xs text-zinc-400">
-                <div class="hidden md:flex items-center gap-2 bg-zinc-900 px-3 py-1.5 rounded-full border border-brand-border">
-                    <i data-lucide="shield-check" class="w-4 h-4 text-brand-lime"></i>
-                    <span>Local Browser Execution</span>
-                </div>
-            </div>
-        </div>
-    </header>
+  <div class="container">
+    <h1>On-Chain NFT Layer Downloader</h1>
+    <p class="subtitle">Fetch and download individual traits/layers directly from your Diamond Smart Contract</p>
 
-    <!-- MAIN CONTAINER -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
-
-        <!-- UPLOAD SECTION (Initial view) -->
-        <div id="uploadView" class="flex-1 flex flex-col items-center justify-center min-h-[500px]">
-            <div class="w-full max-w-2xl bg-brand-panel border border-brand-border rounded-xl p-8 text-center flex flex-col items-center shadow-2xl relative overflow-hidden">
-                <div class="absolute inset-0 bg-gradient-to-b from-brand-lime/5 to-transparent pointer-events-none"></div>
-                
-                <div id="dropZone" class="w-full border-2 border-dashed border-zinc-700 hover:border-brand-lime rounded-lg p-10 transition-all cursor-pointer flex flex-col items-center gap-4 group">
-                    <input type="file" id="fileInput" accept=".zip" class="hidden">
-                    <div class="p-4 bg-zinc-900 rounded-full border border-brand-border group-hover:scale-110 transition-transform">
-                        <i data-lucide="file-archive" class="w-10 h-10 text-brand-lime"></i>
-                    </div>
-                    <div>
-                        <p class="text-base font-semibold text-zinc-200">Drag & drop your ZIP archive here</p>
-                        <p class="text-xs text-zinc-500 mt-1">or click to browse files from desktop/mobile</p>
-                    </div>
-                    <button class="px-5 py-2.5 bg-brand-lime hover:bg-lime-400 text-black font-semibold text-sm rounded-lg transition-colors shadow-lg">
-                        Select ZIP Archive
-                    </button>
-                </div>
-
-                <div id="uploadProgress" class="hidden w-full mt-6 space-y-3">
-                    <div class="flex justify-between text-xs text-zinc-400 font-mono">
-                        <span id="progressStatus">Analyzing archive structure...</span>
-                        <span id="progressPercent">0%</span>
-                    </div>
-                    <div class="w-full h-2 bg-zinc-800 rounded-full overflow-hidden">
-                        <div id="progressBar" class="h-full bg-brand-lime transition-all duration-200 w-0"></div>
-                    </div>
-                </div>
-
-                <div id="errorMessage" class="hidden w-full mt-4 p-3 bg-red-950/50 border border-red-800 text-red-200 text-xs rounded-lg flex items-center gap-2">
-                    <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
-                    <span id="errorText"></span>
-                </div>
-
-                <!-- PRIVACY BADGE -->
-                <div class="mt-8 pt-6 border-t border-brand-border/50 w-full flex flex-wrap items-center justify-center gap-6 text-xs text-zinc-400">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="lock" class="w-4 h-4 text-zinc-500"></i>
-                        <span>Client-Side Processing</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="server-off" class="w-4 h-4 text-zinc-500"></i>
-                        <span>No Server Upload</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="cpu" class="w-4 h-4 text-zinc-500"></i>
-                        <span>Zero Wallet Required</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- EXPLORER SECTION (Visible after upload) -->
-        <div id="explorerView" class="hidden flex-1 flex flex-col gap-6">
-
-            <!-- DASHBOARD METRICS -->
-            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div class="bg-brand-panel border border-brand-border p-4 rounded-xl">
-                    <span class="text-xs text-zinc-400 font-mono">ARCHIVE</span>
-                    <div class="font-bold text-sm truncate text-brand-lime mt-1 font-mono" id="archiveName">-</div>
-                </div>
-                <div class="bg-brand-panel border border-brand-border p-4 rounded-xl">
-                    <span class="text-xs text-zinc-400 font-mono">ROOT LAYERS</span>
-                    <div class="font-bold text-xl text-white mt-1" id="statLayers">0</div>
-                </div>
-                <div class="bg-brand-panel border border-brand-border p-4 rounded-xl">
-                    <span class="text-xs text-zinc-400 font-mono">NESTED FOLDERS</span>
-                    <div class="font-bold text-xl text-white mt-1" id="statFolders">0</div>
-                </div>
-                <div class="bg-brand-panel border border-brand-border p-4 rounded-xl">
-                    <span class="text-xs text-zinc-400 font-mono">TOTAL FILES / SIZE</span>
-                    <div class="font-bold text-xl text-white mt-1" id="statFiles">0 / 0 KB</div>
-                </div>
-            </div>
-
-            <!-- CONTROLS & ROOT LAYERS SECTION -->
-            <div class="bg-brand-panel border border-brand-border rounded-xl p-5 space-y-4">
-                <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <button id="selectAllBtn" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium rounded-lg transition-colors">
-                            Select All
-                        </button>
-                        <button id="deselectAllBtn" class="px-3 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-xs font-medium rounded-lg transition-colors">
-                            Deselect All
-                        </button>
-                        <button id="resetZipBtn" class="px-3 py-1.5 bg-red-950/40 hover:bg-red-900/40 text-red-300 text-xs font-medium rounded-lg transition-colors border border-red-900/50">
-                            New Archive
-                        </button>
-                    </div>
-                    <div class="relative flex-1 max-w-md">
-                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400"></i>
-                        <input type="text" id="searchInput" placeholder="Search layers, folders or files..." class="w-full bg-zinc-900 border border-brand-border rounded-lg pl-9 pr-4 py-1.5 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-lime">
-                    </div>
-                </div>
-
-                <!-- ROOT LAYERS CARD CONTAINER -->
-                <div>
-                    <h3 class="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Root Layers Overview</h3>
-                    <div id="rootLayersList" class="flex flex-wrap gap-2">
-                        <!-- Root layer chips injected here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- MAIN EXPLORER & PREVIEW SPLIT VIEW -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-[450px]">
-                
-                <!-- FILE TREE (LEFT) -->
-                <div class="lg:col-span-7 bg-brand-panel border border-brand-border rounded-xl flex flex-col overflow-hidden">
-                    <div class="p-3 border-b border-brand-border bg-zinc-900/50 flex items-center justify-between">
-                        <span class="text-xs font-bold font-mono tracking-wider text-zinc-300">EXPLORER HIERARCHY</span>
-                        <div class="text-xs text-zinc-400 font-mono">
-                            Selected: <span id="selectionCounter" class="text-brand-lime">0 Layers, 0 Files</span>
-                        </div>
-                    </div>
-                    <div class="p-4 flex-1 overflow-y-auto max-h-[550px] font-mono text-xs" id="treeContainer">
-                        <!-- Tree generated dynamically -->
-                    </div>
-                </div>
-
-                <!-- FILE PREVIEW & DETAILS (RIGHT) -->
-                <div class="lg:col-span-5 bg-brand-panel border border-brand-border rounded-xl flex flex-col overflow-hidden">
-                    <div class="p-3 border-b border-brand-border bg-zinc-900/50 flex items-center justify-between">
-                        <span class="text-xs font-bold font-mono tracking-wider text-zinc-300" id="previewTitle">INSPECTOR</span>
-                        <span class="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-mono" id="previewBadge">Safe Mode</span>
-                    </div>
-                    <div class="p-4 flex-1 overflow-y-auto max-h-[550px] flex flex-col" id="previewContainer">
-                        <div class="flex-1 flex flex-col items-center justify-center text-zinc-500 text-xs py-12">
-                            <i data-lucide="file-search" class="w-10 h-10 mb-2 stroke-1"></i>
-                            <p>Select a file to inspect content</p>
-                            <p class="text-[10px] text-zinc-600 mt-1">Or click folder download button for single layer ZIP</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- GLOBAL DOWNLOAD ACTIONS BAR -->
-            <div class="sticky bottom-4 z-30 bg-brand-panel/95 backdrop-blur border border-brand-border p-4 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xl">
-                <div class="flex items-center gap-3 w-full sm:w-auto">
-                    <div class="p-2 bg-zinc-900 rounded-lg border border-brand-border hidden sm:block">
-                        <i data-lucide="package-check" class="w-5 h-5 text-brand-lime"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-semibold text-white">Extraction Ready</div>
-                        <div class="text-xs text-zinc-400 font-mono" id="bottomSelectionText">0 Layers, 0 Files selected</div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-                    <button id="downloadOriginalBtn" class="flex-1 sm:flex-initial px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-xs rounded-lg transition-colors flex items-center justify-center gap-2">
-                        <i data-lucide="archive" class="w-4 h-4"></i>
-                        <span>Download Original ZIP</span>
-                    </button>
-                    <button id="downloadSelectedBtn" class="flex-1 sm:flex-initial px-6 py-2.5 bg-brand-lime hover:bg-lime-400 text-black font-bold text-xs rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-brand-lime/10">
-                        <i data-lucide="download" class="w-4 h-4"></i>
-                        <span>DOWNLOAD SELECTED LAYERS</span>
-                    </button>
-                </div>
-            </div>
-
-        </div>
-
-    </main>
-
-    <!-- DOWNLOAD PROGRESS MODAL -->
-    <div id="progressModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-brand-panel border border-brand-border w-full max-w-md rounded-xl p-6 shadow-2xl space-y-4">
-            <div class="flex items-center gap-3">
-                <div class="p-2 bg-brand-lime/10 border border-brand-lime/20 rounded-lg">
-                    <i data-lucide="loader-2" class="w-6 h-6 text-brand-lime animate-spin"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-sm" id="modalTitle">Preparing Download...</h3>
-                    <p class="text-xs text-zinc-400" id="modalSub">Processing layer hierarchy</p>
-                </div>
-            </div>
-            
-            <div class="space-y-2">
-                <div class="flex justify-between text-xs font-mono text-zinc-400">
-                    <span id="modalStepText">Collecting files...</span>
-                    <span id="modalPercent">0%</span>
-                </div>
-                <div class="w-full h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
-                    <div id="modalProgressBar" class="h-full bg-brand-lime transition-all duration-150 w-0"></div>
-                </div>
-            </div>
-            <p class="text-[11px] text-zinc-500 font-mono">Original directory paths are preserved recursively.</p>
-        </div>
+    <div class="form-box">
+      <input type="text" id="rpcUrl" placeholder="Enter RPC URL (e.g., https://...)" />
+      <input type="text" id="contractAddress" placeholder="Enter Diamond Contract Address (0x...)" />
+      <button onclick="fetchLayers()">Fetch Layers</button>
     </div>
 
-    <!-- APPLICATION LOGIC -->
-    <script>
-        // APPLICATION STATE
-        const state = {
-            rawZipFile: null,
-            zipEntries: {}, // path -> zipEntry
-            treeRoot: null, // Directory node tree
-            selectedPaths: new Set(), // Set of all selected full paths (files & folders)
-            expandedFolders: new Set(),
-            originalFileName: 'archive.zip',
-            totalFiles: 0,
-            totalFolders: 0,
-            totalLayers: 0,
-            archiveSize: 0
-        };
+    <div class="status" id="status"></div>
+    <div class="grid" id="layerGrid"></div>
+  </div>
 
-        // DOM ELEMENTS
-        const fileInput = document.getElementById('fileInput');
-        const dropZone = document.getElementById('dropZone');
-        const uploadView = document.getElementById('uploadView');
-        const explorerView = document.getElementById('explorerView');
-        const uploadProgress = document.getElementById('uploadProgress');
-        const progressBar = document.getElementById('progressBar');
-        const progressPercent = document.getElementById('progressPercent');
-        const progressStatus = document.getElementById('progressStatus');
-        const errorMessage = document.getElementById('errorMessage');
-        const errorText = document.getElementById('errorText');
+  <script>
+    // ICustomToken & LibAppStorage ABI
+    const contractABI = [
+      "function traitTypes(uint256 _traitTypeIndex, uint256 _index) view returns (string traitName, string traitType, string[] pixels, uint256[] pixelCount)"
+    ];
 
-        const archiveName = document.getElementById('archiveName');
-        const statLayers = document.getElementById('statLayers');
-        const statFolders = document.getElementById('statFolders');
-        const statFiles = document.getElementById('statFiles');
-        const rootLayersList = document.getElementById('rootLayersList');
-        const treeContainer = document.getElementById('treeContainer');
-        const previewContainer = document.getElementById('previewContainer');
-        const previewTitle = document.getElementById('previewTitle');
-        const selectionCounter = document.getElementById('selectionCounter');
-        const bottomSelectionText = document.getElementById('bottomSelectionText');
+    async function fetchLayers() {
+      const rpcUrl = document.getElementById('rpcUrl').value.trim();
+      const contractAddress = document.getElementById('contractAddress').value.trim();
+      const status = document.getElementById('status');
+      const grid = document.getElementById('layerGrid');
 
-        const selectAllBtn = document.getElementById('selectAllBtn');
-        const deselectAllBtn = document.getElementById('deselectAllBtn');
-        const resetZipBtn = document.getElementById('resetZipBtn');
-        const searchInput = document.getElementById('searchInput');
-        const downloadOriginalBtn = document.getElementById('downloadOriginalBtn');
-        const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+      if (!rpcUrl || !contractAddress) {
+        alert("Please enter both RPC URL and Contract Address!");
+        return;
+      }
 
-        const progressModal = document.getElementById('progressModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const modalSub = document.getElementById('modalSub');
-        const modalStepText = document.getElementById('modalStepText');
-        const modalPercent = document.getElementById('modalPercent');
-        const modalProgressBar = document.getElementById('modalProgressBar');
+      grid.innerHTML = "";
+      status.innerText = "Connecting to blockchain and fetching layers...";
 
-        // INITIALIZE LUCIDE ICONS
-        lucide.createIcons();
+      try {
+        const provider = new ethers.JsonRpcProvider(rpcUrl);
+        const contract = new ethers.Contract(contractAddress, contractABI, provider);
 
-        // EVENT LISTENERS - UPLOAD
-        dropZone.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', (e) => handleFileSelect(e.target.files[0]));
-        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-brand-lime'); });
-        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('border-brand-lime'));
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-brand-lime');
-            if (e.dataTransfer.files.length > 0) handleFileSelect(e.dataTransfer.files[0]);
-        });
-        resetZipBtn.addEventListener('click', resetApp);
+        let traitTypeIndex = 0;
+        let totalFound = 0;
 
-        // SELECTION CONTROLS
-        selectAllBtn.addEventListener('click', () => {
-            selectAllNodes(state.treeRoot, true);
-            updateUI();
-        });
-        deselectAllBtn.addEventListener('click', () => {
-            state.selectedPaths.clear();
-            updateUI();
-        });
-        searchInput.addEventListener('input', (e) => {
-            renderTree(e.target.value.toLowerCase().trim());
-        });
+        while (true) {
+          let layerIndex = 0;
+          let foundInCategory = false;
 
-        // DOWNLOAD HANDLERS
-        downloadOriginalBtn.addEventListener('click', downloadOriginalZip);
-        downloadSelectedBtn.addEventListener('click', () => downloadSelectedLayers());
-
-        // MAIN FILE SELECTION PROCESSOR
-        async function handleFileSelect(file) {
-            if (!file) return;
-            if (!file.name.toLowerCase().endsWith('.zip')) {
-                showError("Invalid file type. Please upload a standard .zip archive.");
-                return;
-            }
-
-            hideError();
-            state.rawZipFile = file;
-            state.originalFileName = file.name;
-            state.archiveSize = file.size;
-
-            uploadProgress.classList.remove('hidden');
-            updateUploadProgress(10, "Reading file bytes...");
-
+          while (true) {
             try {
-                const jszip = new JSZip();
-                updateUploadProgress(30, "Parsing ZIP data...");
-                const loadedZip = await jszip.loadAsync(file);
+              // Read layer data from smart contract
+              const trait = await contract.traitTypes(traitTypeIndex, layerIndex);
 
-                updateUploadProgress(70, "Analyzing layers & hierarchy...");
-                state.zipEntries = loadedZip.files;
-                
-                // Build internal tree representation
-                buildTreeStructure();
+              if (trait && trait.traitName) {
+                foundInCategory = true;
+                totalFound++;
 
-                updateUploadProgress(100, "Done!");
-                
-                setTimeout(() => {
-                    uploadView.classList.add('hidden');
-                    explorerView.classList.remove('hidden');
-                    initExplorerUI();
-                }, 400);
+                status.innerText = `Fetching: Category ${traitTypeIndex} | Layer ${layerIndex} (${trait.traitName})...`;
 
-            } catch (err) {
-                console.error(err);
-                showError("Corrupted or invalid ZIP file. Unable to parse archive contents.");
-                uploadProgress.classList.add('hidden');
-            }
-        }
-
-        function updateUploadProgress(percent, text) {
-            progressBar.style.width = `${percent}%`;
-            progressPercent.textContent = `${percent}%`;
-            progressStatus.textContent = text;
-        }
-
-        function showError(msg) {
-            errorText.textContent = msg;
-            errorMessage.classList.remove('hidden');
-        }
-        function hideError() {
-            errorMessage.classList.add('hidden');
-        }
-
-        function resetApp() {
-            state.rawZipFile = null;
-            state.zipEntries = {};
-            state.treeRoot = null;
-            state.selectedPaths.clear();
-            state.expandedFolders.clear();
-            fileInput.value = '';
-            uploadProgress.classList.add('hidden');
-            explorerView.classList.add('hidden');
-            uploadView.classList.remove('hidden');
-        }
-
-        // SECURITY: Normalize & Validate Paths to prevent Zip Slip
-        function sanitizePath(path) {
-            const normalized = path.replace(/\\/g, '/');
-            const parts = normalized.split('/').filter(p => p !== '.' && p !== '');
-            if (parts.includes('..')) return null; // Slip attempt
-            return parts.join('/');
-        }
-
-        // BUILD TREE STRUCTURE
-        function buildTreeStructure() {
-            state.treeRoot = {
-                name: 'root',
-                path: '',
-                isFolder: true,
-                children: {},
-                fileCount: 0,
-                folderCount: 0
-            };
-
-            state.totalFiles = 0;
-            state.totalFolders = 0;
-            state.totalLayers = 0;
-
-            const paths = Object.keys(state.zipEntries);
-
-            paths.forEach(rawPath => {
-                const isDir = rawPath.endsWith('/');
-                const clean = sanitizePath(rawPath);
-                if (!clean && clean !== '') return; // Skip malicious paths
-
-                const segments = clean.split('/');
-                let current = state.treeRoot;
-
-                segments.forEach((seg, index) => {
-                    const isLast = index === segments.length - 1;
-                    const itemIsDir = !isLast || isDir;
-                    const itemPath = segments.slice(0, index + 1).join('/') + (itemIsDir ? '/' : '');
-
-                    if (!current.children[seg]) {
-                        current.children[seg] = {
-                            name: seg,
-                            path: itemPath,
-                            isFolder: itemIsDir,
-                            children: {},
-                            size: state.zipEntries[rawPath] ? state.zipEntries[rawPath]._data.uncompressedSize || 0 : 0
-                        };
-                        if (itemIsDir) state.totalFolders++;
-                        else state.totalFiles++;
-                    }
-                    current = current.children[seg];
-                });
-            });
-
-            // Auto-select all root layers by default
-            Object.values(state.treeRoot.children).forEach(node => {
-                state.expandedFolders.add(node.path);
-                selectAllNodes(node, true);
-            });
-            state.totalLayers = Object.keys(state.treeRoot.children).length;
-        }
-
-        // RECURSIVE SELECTION HELPERS
-        function selectAllNodes(node, select = true) {
-            if (select) {
-                state.selectedPaths.add(node.path);
-            } else {
-                state.selectedPaths.delete(node.path);
-            }
-            if (node.isFolder && node.children) {
-                Object.values(node.children).forEach(child => selectAllNodes(child, select));
-            }
-        }
-
-        function getNodeSelectionState(node) {
-            if (!node.isFolder) {
-                return state.selectedPaths.has(node.path) ? 'checked' : 'unchecked';
-            }
-            const descendants = [];
-            function collect(n) {
-                descendants.push(n.path);
-                if (n.children) Object.values(n.children).forEach(collect);
-            }
-            collect(node);
-
-            const selectedCount = descendants.filter(p => state.selectedPaths.has(p)).length;
-            if (selectedCount === 0) return 'unchecked';
-            if (selectedCount === descendants.length) return 'checked';
-            return 'indeterminate';
-        }
-
-        // INIT EXPLORER UI
-        function initExplorerUI() {
-            archiveName.textContent = state.originalFileName;
-            statLayers.textContent = state.totalLayers;
-            statFolders.textContent = state.totalFolders;
-            statFiles.textContent = `${state.totalFiles} / ${(state.archiveSize / 1024).toFixed(1)} KB`;
-
-            renderRootLayersChips();
-            updateUI();
-        }
-
-        function renderRootLayersChips() {
-            rootLayersList.innerHTML = '';
-            Object.values(state.treeRoot.children).forEach(node => {
-                const chip = document.createElement('div');
-                chip.className = `flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono cursor-pointer transition-all ${
-                    node.isFolder ? 'bg-zinc-900 border-zinc-700 hover:border-brand-lime' : 'bg-zinc-950 border-zinc-800'
-                }`;
-                
-                const selState = getNodeSelectionState(node);
-                const isChecked = selState === 'checked';
-
-                chip.innerHTML = `
-                    <input type="checkbox" ${isChecked ? 'checked' : ''} class="rounded accent-brand-lime cursor-pointer">
-                    <i data-lucide="${node.isFolder ? 'folder-archive' : 'file-code'}" class="w-4 h-4 ${node.isFolder ? 'text-brand-lime' : 'text-zinc-400'}"></i>
-                    <span class="font-semibold">${escapeHtml(node.name)}${node.isFolder ? '/' : ''}</span>
-                    ${node.isFolder ? '<span class="text-[10px] bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-400">Includes all nested</span>' : ''}
-                `;
-
-                const checkbox = chip.querySelector('input');
-                if (selState === 'indeterminate') checkbox.indeterminate = true;
-
-                checkbox.addEventListener('change', (e) => {
-                    e.stopPropagation();
-                    selectAllNodes(node, e.target.checked);
-                    updateUI();
-                });
-                chip.addEventListener('click', (e) => {
-                    if (e.target !== checkbox) {
-                        const nextState = selState !== 'checked';
-                        selectAllNodes(node, nextState);
-                        updateUI();
-                    }
-                });
-
-                rootLayersList.appendChild(chip);
-            });
-            lucide.createIcons();
-        }
-
-        function updateUI() {
-            renderRootLayersChips();
-            renderTree(searchInput.value.toLowerCase().trim());
-            updateCounters();
-        }
-
-        function updateCounters() {
-            let layersSelected = 0;
-            let filesSelected = 0;
-
-            // Count Root Layers selected
-            Object.values(state.treeRoot.children).forEach(node => {
-                if (getNodeSelectionState(node) !== 'unchecked') layersSelected++;
-            });
-
-            // Count actual files selected
-            state.selectedPaths.forEach(p => {
-                if (!p.endsWith('/')) filesSelected++;
-            });
-
-            const text = `${layersSelected} Layers, ${filesSelected} Files selected`;
-            selectionCounter.textContent = text;
-            bottomSelectionText.textContent = text;
-        }
-
-        // RENDER FILE TREE RECURSIVELY
-        function renderTree(filter = '') {
-            treeContainer.innerHTML = '';
-            const ul = document.createElement('ul');
-            ul.className = 'space-y-1';
-
-            Object.values(state.treeRoot.children).forEach(child => {
-                const el = buildTreeNodeDOM(child, filter);
-                if (el) ul.appendChild(el);
-            });
-
-            if (ul.children.length === 0) {
-                treeContainer.innerHTML = `<div class="text-zinc-500 py-6 text-center">No layers or files match "${escapeHtml(filter)}"</div>`;
-            } else {
-                treeContainer.appendChild(ul);
-            }
-            lucide.createIcons();
-        }
-
-        function buildTreeNodeDOM(node, filter = '') {
-            const matchesFilter = filter === '' || node.name.toLowerCase().includes(filter) || node.path.toLowerCase().includes(filter);
-
-            let hasMatchingChild = false;
-            let childUl = null;
-
-            if (node.isFolder) {
-                childUl = document.createElement('ul');
-                childUl.className = 'pl-4 border-l border-zinc-800 mt-1 space-y-1';
-                Object.values(node.children).forEach(child => {
-                    const childDom = buildTreeNodeDOM(child, filter);
-                    if (childDom) {
-                        hasMatchingChild = true;
-                        childUl.appendChild(childDom);
-                    }
-                });
-            }
-
-            if (!matchesFilter && !hasMatchingChild) return null;
-
-            const li = document.createElement('li');
-            const isExpanded = state.expandedFolders.has(node.path) || filter !== '';
-            const selState = getNodeSelectionState(node);
-
-            const row = document.createElement('div');
-            row.className = `flex items-center gap-2 p-1.5 rounded hover:bg-zinc-800/60 transition-colors group cursor-pointer ${
-                node.isFolder ? 'font-semibold text-zinc-200' : 'text-zinc-400'
-            }`;
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = selState === 'checked';
-            if (selState === 'indeterminate') checkbox.indeterminate = true;
-            checkbox.className = 'rounded accent-brand-lime cursor-pointer indeterminate-checkbox';
-
-            checkbox.addEventListener('change', (e) => {
-                e.stopPropagation();
-                selectAllNodes(node, e.target.checked);
-                updateUI();
-            });
-
-            row.appendChild(checkbox);
-
-            if (node.isFolder) {
-                const expandBtn = document.createElement('button');
-                expandBtn.className = 'p-0.5 hover:text-brand-lime text-zinc-500';
-                expandBtn.innerHTML = `<i data-lucide="${isExpanded ? 'chevron-down' : 'chevron-right'}" class="w-4 h-4"></i>`;
-                expandBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (state.expandedFolders.has(node.path)) state.expandedFolders.delete(node.path);
-                    else state.expandedFolders.add(node.path);
-                    renderTree(filter);
-                });
-                row.appendChild(expandBtn);
-            }
-
-            const icon = document.createElement('i');
-            icon.className = `w-4 h-4 ${node.isFolder ? 'text-brand-lime' : 'text-zinc-400'}`;
-            icon.setAttribute('data-lucide', node.isFolder ? (isExpanded ? 'folder-open' : 'folder') : getFileIcon(node.name));
-            row.appendChild(icon);
-
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'truncate flex-1';
-            nameSpan.textContent = node.name;
-            row.appendChild(nameSpan);
-
-            if (node.isFolder) {
-                // Layer single download action button
-                const dlBtn = document.createElement('button');
-                dlBtn.className = 'opacity-0 group-hover:opacity-100 px-2 py-0.5 bg-brand-lime/10 hover:bg-brand-lime/20 text-brand-lime border border-brand-lime/30 text-[10px] rounded transition-all flex items-center gap-1';
-                dlBtn.innerHTML = `<i data-lucide="download" class="w-3 h-3"></i> Layer`;
-                dlBtn.title = `Download ${node.name} layer as standalone ZIP`;
-                dlBtn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    downloadSingleLayer(node);
-                });
-                row.appendChild(dlBtn);
-            } else {
-                const sizeSpan = document.createElement('span');
-                sizeSpan.className = 'text-[10px] text-zinc-600 font-mono';
-                sizeSpan.textContent = formatBytes(node.size);
-                row.appendChild(sizeSpan);
-            }
-
-            row.addEventListener('click', (e) => {
-                if (e.target !== checkbox && !e.target.closest('button')) {
-                    if (node.isFolder) {
-                        if (state.expandedFolders.has(node.path)) state.expandedFolders.delete(node.path);
-                        else state.expandedFolders.add(node.path);
-                        renderTree(filter);
-                    } else {
-                        previewFile(node);
-                    }
-                }
-            });
-
-            li.appendChild(row);
-            if (node.isFolder && isExpanded && childUl) {
-                li.appendChild(childUl);
-            }
-
-            return li;
-        }
-
-        // PREVIEW FILE CONTENTS SAFELY
-        async function previewFile(node) {
-            previewTitle.textContent = node.name;
-            previewContainer.innerHTML = '<div class="text-zinc-500 text-xs py-8 text-center">Loading preview...</div>';
-
-            const zipEntry = state.zipEntries[node.path];
-            if (!zipEntry) {
-                previewContainer.innerHTML = '<div class="text-red-400 text-xs p-4">Unable to locate file entry.</div>';
-                return;
-            }
-
-            const ext = node.name.split('.').pop().toLowerCase();
-            const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext);
-
-            try {
-                if (isImage) {
-                    const blob = await zipEntry.async('blob');
-                    const url = URL.createObjectURL(blob);
-                    previewContainer.innerHTML = `
-                        <div class="flex-1 flex flex-col items-center justify-center p-4">
-                            <img src="${url}" class="max-h-72 object-contain rounded border border-brand-border bg-black/40">
-                            <div class="mt-3 text-[11px] font-mono text-zinc-400">${escapeHtml(node.path)} (${formatBytes(node.size)})</div>
-                        </div>
-                    `;
+                // Render SVG preview (constructing SVG from pixels string)
+                let svgContent = "";
+                if (trait.pixels && trait.pixels.length > 0) {
+                  // If pixels contain complete SVG strings or raw vector paths
+                  const rawPixels = trait.pixels.join("");
+                  if (rawPixels.includes("<svg")) {
+                    svgContent = rawPixels;
+                  } else {
+                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawPixels}</svg>`;
+                  }
                 } else {
-                    // Text / Code Preview - Read as string safely
-                    let text = await zipEntry.async('string');
-                    // Truncate preview if gigantic to avoid crashing DOM
-                    if (text.length > 100000) {
-                        text = text.substring(0, 100000) + '\n\n--- [TRUNCATED DUE TO SIZE] ---';
-                    }
-
-                    const codeEl = document.createElement('code');
-                    codeEl.className = `language-${getPrismLang(ext)} text-xs`;
-                    codeEl.textContent = text; // Safe textContent prevents HTML/JS execution
-
-                    const preEl = document.createElement('pre');
-                    preEl.className = 'rounded p-3 bg-zinc-950 border border-brand-border flex-1 font-mono text-xs overflow-x-auto';
-                    preEl.appendChild(codeEl);
-
-                    previewContainer.innerHTML = '';
-                    previewContainer.appendChild(preEl);
-                    Prism.highlightElement(codeEl);
+                  svgContent = `<span style="color:#64748b; font-size:12px;">No SVG Preview</span>`;
                 }
+
+                // Append card to grid
+                createLayerCard(trait.traitType, trait.traitName, svgContent, traitTypeIndex, layerIndex);
+                layerIndex++;
+              } else {
+                break;
+              }
             } catch (err) {
-                previewContainer.innerHTML = `<div class="text-red-400 text-xs p-4">Error generating preview: ${escapeHtml(err.message)}</div>`;
+              break; // No more layers in this index
             }
+          }
+
+          if (!foundInCategory && layerIndex === 0) {
+            break; // No more categories left
+          }
+
+          traitTypeIndex++;
         }
 
-        // CORE RECURSIVE ZIP GENERATOR REQUIREMENT
-        // Iterates through selected items, collects every descendant recursively and adds to new archive while maintaining path
-        async function generateAndDownloadZip(selectedNodePaths, outputFilename) {
-            showProgressModal("Preparing download...", "Collecting selected layer hierarchy");
-
-            const newZip = new JSZip();
-            const sourceZip = new JSZip();
-            await sourceZip.loadAsync(state.rawZipFile);
-
-            const filePathsToInclude = new Set();
-
-            updateProgressModal("Analyzing selected nodes...", 20);
-
-            // RECURSIVE FILE COLLECTOR LOGIC
-            function collectFilesRecursively(folderPath) {
-                Object.keys(state.zipEntries).forEach(rawPath => {
-                    const cleanPath = sanitizePath(rawPath);
-                    if (cleanPath && (cleanPath === folderPath || cleanPath.startsWith(folderPath))) {
-                        filePathsToInclude.add(rawPath);
-                    }
-                });
-            }
-
-            // Process both selected layers and selected individual files
-            selectedNodePaths.forEach(path => {
-                if (path.endsWith('/')) {
-                    collectFilesRecursively(path);
-                } else {
-                    filePathsToInclude.add(path);
-                }
-            });
-
-            if (filePathsToInclude.size === 0) {
-                hideProgressModal();
-                alert("No files selected for extraction.");
-                return;
-            }
-
-            const total = filePathsToInclude.size;
-            let processed = 0;
-
-            updateProgressModal("Collecting & preserving relative paths...", 40);
-
-            for (const path of filePathsToInclude) {
-                const entry = state.zipEntries[path];
-                if (entry && !entry.dir) {
-                    const content = await entry.async('uint8array');
-                    // PRESERVE ORIGINAL PATH EXACTLY IN NEW ZIP
-                    newZip.file(path, content);
-                } else if (entry && entry.dir) {
-                    // Preserve folder entry
-                    newZip.folder(path);
-                }
-                processed++;
-                const percent = Math.floor(40 + (processed / total) * 40);
-                updateProgressModal(`Compressing layer files (${processed}/${total})...`, percent);
-            }
-
-            updateProgressModal("Creating final ZIP archive...", 90);
-
-            const blob = await newZip.generateAsync({
-                type: 'blob',
-                compression: 'DEFLATE',
-                compressionOptions: { level: 6 }
-            }, (metadata) => {
-                const pct = Math.floor(90 + (metadata.percent * 0.1));
-                updateProgressModal("Finalizing download file...", pct);
-            });
-
-            updateProgressModal("Download ready!", 100);
-
-            setTimeout(() => {
-                triggerBlobDownload(blob, outputFilename);
-                hideProgressModal();
-            }, 300);
+        if (totalFound === 0) {
+          status.innerText = "No layers found in this contract or incorrect address/RPC.";
+        } else {
+          status.innerText = `Successfully loaded ${totalFound} individual layers!`;
         }
 
-        // DOWNLOAD ENTIRE LAYER (Single folder download action)
-        function downloadSingleLayer(node) {
-            const folderName = node.name.replace(/[/\\?%*:|"<>]/g, '_');
-            generateAndDownloadZip([node.path], `${folderName}_layer.zip`);
-        }
+      } catch (error) {
+        console.error(error);
+        status.innerText = "Error fetching data! Check console or verify contract address.";
+      }
+    }
 
-        // DOWNLOAD ALL SELECTED LAYERS & FILES
-        function downloadSelectedLayers() {
-            if (state.selectedPaths.size === 0) {
-                alert("Please select at least one layer or file to extract.");
-                return;
-            }
-            generateAndDownloadZip(Array.from(state.selectedPaths), `selected_layers.zip`);
-        }
+    function createLayerCard(type, name, svgHtml, catIdx, layerIdx) {
+      const grid = document.getElementById('layerGrid');
+      const card = document.createElement('div');
+      card.className = 'card';
 
-        // DOWNLOAD ORIGINAL ZIP UNCHANGED
-        function downloadOriginalZip() {
-            triggerBlobDownload(state.rawZipFile, state.originalFileName);
-        }
+      card.innerHTML = `
+        <div class="svg-preview">${svgHtml}</div>
+        <div class="trait-type">${type || `Category ${catIdx}`}</div>
+        <div class="trait-name">${name}</div>
+        <button class="download-btn" onclick="downloadSVG('${catIdx}_${layerIdx}_${name}', \`${encodeURIComponent(svgHtml)}\`)">Download SVG</button>
+      `;
 
-        // TRIGGER BLOB DOWNLOAD
-        function triggerBlobDownload(blob, filename) {
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
+      grid.appendChild(card);
+    }
 
-        // MODAL HELPERS
-        function showProgressModal(title, sub) {
-            modalTitle.textContent = title;
-            modalSub.textContent = sub;
-            updateProgressModal("Processing...", 0);
-            progressModal.classList.remove('hidden');
-        }
-        function updateProgressModal(stepText, percent) {
-            modalStepText.textContent = stepText;
-            modalPercent.textContent = `${percent}%`;
-            modalProgressBar.style.width = `${percent}%`;
-        }
-        function hideProgressModal() {
-            progressModal.classList.add('hidden');
-        }
-
-        // UTILS
-        function getFileIcon(filename) {
-            const ext = filename.split('.').pop().toLowerCase();
-            if (['sol', 'js', 'ts', 'json', 'html', 'css', 'py', 'cpp'].includes(ext)) return 'file-code';
-            if (['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext)) return 'file-image';
-            if (['md', 'txt'].includes(ext)) return 'file-text';
-            return 'file';
-        }
-        function getPrismLang(ext) {
-            const map = {
-                sol: 'solidity',
-                json: 'json',
-                js: 'javascript',
-                ts: 'typescript',
-                html: 'html',
-                css: 'css',
-                md: 'markdown'
-            };
-            return map[ext] || 'clike';
-        }
-        function formatBytes(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-        function escapeHtml(str) {
-            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        }
-    </script>
+    function downloadSVG(filename, encodedSvg) {
+      const svgData = decodeURIComponent(encodedSvg);
+      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${filename}.svg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+  </script>
 </body>
 </html>

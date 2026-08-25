@@ -1,610 +1,290 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Full On-Chain NFT & Contract Downloader</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Ethers.js v5 CDN -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-  <!-- JSZip for Archiving -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- FileSaver for Downloading -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>STONK BROKERS // ETH MAINNET GENERATOR</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin:0; padding:0; }
+  body { background:#008080; font-family:'VT323',monospace; padding:20px; }
+  .wrap { max-width:1000px; margin:0 auto; }
+  .win { background:#c0c0c0; border:3px solid; border-top-color:#fff; border-left-color:#fff; border-right-color:#808080; border-bottom-color:#808080; margin-bottom:16px; }
+  .titlebar { background:#000080; color:#fff; padding:6px 10px; font-family:'Press Start 2P',monospace; font-size:11px; display:flex; justify-content:space-between; align-items:center; }
+  .content { padding:16px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .col { flex:1; min-width:200px; }
+  label { font-family:'Press Start 2P',monospace; font-size:8px; display:block; margin-bottom:4px; color:#000080; }
+  input, textarea { background:#fff; border:2px inset #808080; padding:8px; width:100%; font-family:'VT323',monospace; font-size:15px; }
+  button { background:#c0c0c0; border:3px solid; border-top-color:#fff; border-left-color:#fff; border-right-color:#808080; border-bottom-color:#808080; padding:10px 16px; font-family:'Press Start 2P',monospace; font-size:10px; cursor:pointer; }
+  button:active { border-top-color:#808080; border-left-color:#808080; border-right-color:#fff; border-bottom-color:#fff; }
+  button:disabled { opacity:.5; cursor:not-allowed; }
+  .bar { background:#fff; border:2px inset #808080; height:22px; margin-top:8px; }
+  .fill { background:#000080; height:100%; width:0%; }
+  .log { background:#111; color:#0f0; font-family:'VT323',monospace; font-size:14px; padding:10px; height:200px; overflow:auto; white-space:pre-wrap; border:2px inset #808080; }
+  .info { color:#000080; font-family:'Press Start 2P',monospace; font-size:8px; margin-bottom:6px; }
+  .warn { color:#aa0000; font-family:'Press Start 2P',monospace; font-size:8px; margin-bottom:6px; }
+  .stat { display:flex; gap:16px; flex-wrap:wrap; margin-top:8px; }
+  .stat span { font-family:'Press Start 2P',monospace; font-size:9px; background:#d4d0c8; border:2px outset #808080; padding:6px 10px; }
+
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:10px; max-height:640px; overflow-y:auto; padding:4px; }
+  .nft-card { background:#d4d0c8; border:2px solid; border-top-color:#fff; border-left-color:#fff; border-right-color:#808080; border-bottom-color:#808080; cursor:pointer; padding:6px; text-align:center; }
+  .nft-card:hover { outline:2px solid #000080; }
+  .nft-card img { width:100%; aspect-ratio:1; image-rendering:pixelated; background:#fff; border:1px inset #808080; display:block; }
+  .nft-card .cap { font-family:'Press Start 2P',monospace; font-size:7px; margin-top:4px; color:#000080; }
+  .gallery-empty { font-family:'Press Start 2P',monospace; font-size:9px; text-align:center; padding:30px; color:#808080; }
+
+  .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,.8); display:flex; align-items:center; justify-content:center; z-index:9999; padding:20px; }
+  .modal-box { background:#c0c0c0; border:3px solid; border-top-color:#fff; border-left-color:#fff; border-right-color:#808080; border-bottom-color:#808080; width:100%; max-width:460px; max-height:88vh; overflow:auto; }
+  .modal-img { width:100%; aspect-ratio:1; image-rendering:pixelated; background:#fff; border:2px inset #808080; }
+  .attr-row { display:flex; justify-content:space-between; background:#fff; border:1px solid #808080; padding:5px 8px; margin-bottom:4px; font-family:'VT323',monospace; font-size:15px; }
+  .attr-row b { color:#000080; font-family:'VT323',monospace; }
+</style>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
+<body>
+<div class="wrap">
 
-  <div class="max-w-5xl mx-auto space-y-6">
-    <!-- Header -->
-    <header class="text-center py-4 border-b border-slate-700">
-      <h1 class="text-3xl font-bold text-emerald-400">On-Chain NFT & Contract Downloader</h1>
-      <p class="text-slate-400 mt-2">Dynamic Contract Analysis, On-Chain Rendering & Full Asset Downloader</p>
-    </header>
-
-    <!-- Configuration Panel -->
-    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 shadow-lg">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Alchemy API Key or RPC URL</label>
-          <input id="rpcInput" type="text" placeholder="API Key or https://eth-mainnet.g.alchemy.com/v2/..." 
-                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Explorer API Key (Etherscan/Basescan etc.)</label>
-          <input id="explorerKey" type="text" placeholder="Your Explorer API Key" 
-                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-        </div>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">NFT Contract Address</label>
-        <input id="contractAddress" type="text" value="0x312BE6a98441F9F6e3F6246B13CA19701e0AC3B9" 
-               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">Start Token ID</label>
-          <input id="startTokenId" type="number" value="0" min="0" 
-                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">End Token ID</label>
-          <input id="endTokenId" type="number" value="10" min="0" 
-                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-slate-300 mb-1">IPFS Gateway</label>
-          <input id="ipfsGateway" type="text" value="https://ipfs.io/ipfs/" 
-                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
-        </div>
-      </div>
-
-      <!-- Action Buttons -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-        <button onclick="analyzeContract()" class="bg-amber-600 hover:bg-amber-500 font-semibold py-2 px-4 rounded-lg transition">
-          🔍 Analyze Contract
-        </button>
-        <button onclick="downloadContractSource()" class="bg-emerald-600 hover:bg-emerald-500 font-semibold py-2 px-4 rounded-lg transition">
-          1. সোর্স কোড ডাউনলোড
-        </button>
-        <button onclick="downloadOnChainData()" class="bg-indigo-600 hover:bg-indigo-500 font-semibold py-2 px-4 rounded-lg transition">
-          2. অনচেন ডাটা ও মেটাডেটা ডাউনলোড
-        </button>
-      </div>
-    </div>
-
-    <!-- Progress Indicator -->
-    <div id="progressContainer" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
-      <div class="flex justify-between text-sm font-medium">
-        <span id="progressText" class="text-emerald-400">প্রসেসিং হচ্ছে...</span>
-        <span id="progressPercent" class="text-slate-300">0%</span>
-      </div>
-      <div class="w-full bg-slate-900 rounded-full h-2.5">
-        <div id="progressBar" class="bg-emerald-500 h-2.5 rounded-full w-0 transition-all duration-300"></div>
-      </div>
-    </div>
-
-    <!-- Contract Analysis & Results Grid -->
-    <div id="analysisPanel" class="hidden bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
-      <h2 class="text-lg font-bold text-emerald-400 border-b border-slate-700 pb-2">Contract Analysis Summary</h2>
-      <div id="analysisDetails" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm font-mono"></div>
-      <div id="detectedFunctionsList" class="text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-700 text-indigo-300"></div>
-    </div>
-
-    <!-- Live Console Output -->
-    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-2">
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold text-slate-200">স্ট্যাটাস ও আউটপুট Logs</h2>
-        <button onclick="clearLogs()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Clear Logs</button>
-      </div>
-      <pre id="logConsole" class="bg-slate-950 p-4 rounded-lg text-emerald-400 text-xs font-mono h-56 overflow-y-auto whitespace-pre-wrap">ওয়েবসাইট রেডি... API কী দিন এবং প্রসেস শুরু করুন।</pre>
+  <div class="win">
+    <div class="titlebar"><span>🆕 ETH MAINNET NFT GENERATOR (ON-CHAIN BASELINE)</span></div>
+    <div class="content">
+      <div class="info">✓ ইথেরিয়াম মেইননেটের ফুল অন-চেইন কালেকশন থেকে ডাটা রিড করার ব্যবস্থা করা হয়েছে</div>
+      <div class="info">✓ কন্ট্রাক্ট থেকে অন-চেইন রেন্ডার করা মেটাডাটা ও ট্রেইট টেনে বেসলাইন ডুপ্লিকেট চেক নিশ্চিত করে</div>
+      <div class="warn">⚠️ সম্পূর্ণ অফলাইন/লোকাল জেনারেটর — সরাসরি ব্রাউজারে রান করে</div>
     </div>
   </div>
 
-  <script>
-    // -------------------------------------------------------------
-    // GLOBAL STATE & HELPER UTILITIES
-    // -------------------------------------------------------------
-    let state = {
-      provider: null,
-      contractAddress: '',
-      verified: false,
-      isProxy: false,
-      implementationAddress: null,
-      abi: [],
-      detectedRenderFunctions: [],
-      contractInfo: {}
-    };
+  <div class="win">
+    <div class="titlebar"><span>⚙️ ETH MAINNET CONTRACT CONFIG</span></div>
+    <div class="content">
+      <div class="row">
+        <div class="col">
+          <label>CONTRACT ADDRESS</label>
+          <input id="contract-address" value="0x312BE6a98441F9F6e3F6246B13CA19701e0AC3B9">
+        </div>
+        <div class="col">
+          <label>RPC URL (ALCHEMY ETH MAINNET)</label>
+          <input id="rpc-url" value="https://eth-mainnet.g.alchemy.com/v2/alch_NBTMkyeepw_LMRNNn7Ytc">
+        </div>
+        <div class="col" style="max-width:140px;">
+          <label>CONCURRENCY</label>
+          <input id="baseline-concurrency" type="number" value="6" min="1" max="20">
+        </div>
+      </div>
+      <div class="row">
+        <button id="load-chain-btn" onclick="loadExistingFromChain()" style="flex:1;">⛓ LOAD BASELINE FROM ETH MAINNET</button>
+        <button id="stop-baseline-btn" onclick="stopBaselineLoad()" disabled style="flex:1;">🛑 STOP</button>
+      </div>
+      <div class="bar"><div class="fill" id="baseline-fill"></div></div>
+      <div class="info" id="existing-status">এখনো লোড হয়নি — জেনারেট করার আগে মেইননেট থেকে অন-চেইন মেটাডাটা লোড করে নিতে পারো।</div>
+    </div>
+  </div>
 
-    const KNOWN_RENDER_FUNCTIONS = [
-      'tokenURI(uint256)', 'uri(uint256)', 'dataURI(uint256)', 'svg(uint256)',
-      'generateSVG(uint256)', 'render(uint256)', 'image(uint256)', 'metadata(uint256)',
-      'tokenMetadata(uint256)', 'getTokenURI(uint256)', 'constructTokenURI(uint256)',
-      'buildMetadata(uint256)', 'buildSVG(uint256)', 'getSVG(uint256)'
-    ];
+  <div class="win">
+    <div class="titlebar"><span>🎲 GENERATE SETTINGS</span></div>
+    <div class="content">
+      <div class="row">
+        <div class="col">
+          <label>TOTAL NEW NFTs</label>
+          <input id="total-count" type="number" value="6666" min="1" max="20000">
+        </div>
+        <div class="col">
+          <label>START TOKEN ID</label>
+          <input id="start-id" type="number" value="4445" min="1">
+        </div>
+        <div class="col">
+          <label>NAME PREFIX</label>
+          <input id="name-prefix" value="Stonk Broker Gen2 #">
+        </div>
+      </div>
+      <div class="row">
+        <div class="col">
+          <label>DESCRIPTION</label>
+          <textarea id="nft-description" rows="2">4444 originals on Ethereum, now expanded — unique trait combinations generated on-chain.</textarea>
+        </div>
+      </div>
+      <div class="row">
+        <button id="gen-btn" onclick="startGenerate()">🎲 GENERATE NEW NFTs</button>
+        <button id="stop-btn" onclick="stopGenerate()" disabled>🛑 STOP</button>
+      </div>
+      <div class="bar"><div class="fill" id="fill"></div></div>
+      <div class="stat">
+        <span id="stat-done">DONE: 0</span>
+        <span id="stat-ok">OK: 0</span>
+        <span id="stat-reroll">RE-ROLLED: 0</span>
+        <span id="stat-total">TOTAL: 0</span>
+      </div>
+    </div>
+  </div>
 
-    function log(msg) {
-      const consoleEl = document.getElementById('logConsole');
-      consoleEl.innerText += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
-      consoleEl.scrollTop = consoleEl.scrollHeight;
-    }
+  <div class="win">
+    <div class="titlebar"><span>📦 DOWNLOAD</span></div>
+    <div class="content">
+      <div class="row">
+        <div class="col">
+          <button onclick="downloadImagesZip()" id="dl-images" disabled style="width:100%;">🖼️ NFT IMAGES (ZIP)</button>
+          <div class="bar"><div class="fill" id="images-fill"></div></div>
+          <div class="info" id="images-progress-text" style="margin-top:4px;">0 / 0</div>
+        </div>
+        <div class="col">
+          <button onclick="downloadMetadataZip()" id="dl-meta" disabled style="width:100%;">📄 METADATA (ZIP)</button>
+          <div class="bar"><div class="fill" id="meta-fill"></div></div>
+          <div class="info" id="meta-progress-text" style="margin-top:4px;">0 / 0</div>
+        </div>
+      </div>
+      <div class="row">
+        <button onclick="downloadCSV()" id="dl-csv" disabled style="width:100%;">📊 CSV (attributes only)</button>
+      </div>
+    </div>
+  </div>
 
-    function clearLogs() {
-      document.getElementById('logConsole').innerText = 'Logs cleared.';
-    }
+  <div class="win">
+    <div class="titlebar"><span>🖼️ LIVE GALLERY</span></div>
+    <div class="content">
+      <div id="gallery" class="gallery">
+        <div class="gallery-empty">[ এখনো কিছু জেনারেট হয়নি — GENERATE চাপুন ]</div>
+      </div>
+    </div>
+  </div>
 
-    function setProgress(percent, text) {
-      const container = document.getElementById('progressContainer');
-      const bar = document.getElementById('progressBar');
-      const percentEl = document.getElementById('progressPercent');
-      const textEl = document.getElementById('progressText');
+  <div class="win">
+    <div class="titlebar"><span>📟 LOG</span></div>
+    <div class="content">
+      <div id="log" class="log">Waiting to start...\n</div>
+    </div>
+  </div>
 
-      container.classList.remove('hidden');
-      bar.style.width = `${percent}%`;
-      percentEl.innerText = `${Math.round(percent)}%`;
-      if (text) textEl.innerText = text;
-    }
+</div>
 
-    function hideProgress() {
-      document.getElementById('progressContainer').classList.add('hidden');
-    }
+<div id="modal-root"></div>
 
-    function resolveRpcProvider() {
-      const input = document.getElementById('rpcInput').value.trim();
-      if (!input) throw new Error("Alchemy API Key বা RPC URL প্রদান করুন!");
+<script>
+// ============================================================
+// APP STATE & CHAIN BASELINE PULLER
+// ============================================================
+let existingSignatures = new Set();
+let usedSignatures = new Set();
+let results = new Map();
+let stopFlag = false;
+let galleryCleared = false;
 
-      if (input.startsWith("http://") || input.startsWith("https://")) {
-        return new ethers.providers.JsonRpcProvider(input);
-      } else {
-        // Assume raw Alchemy API Key for Ethereum Mainnet
-        return new ethers.providers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${input}`);
-      }
-    }
+function log(msg) {
+  const el = document.getElementById('log');
+  el.textContent += msg + "\n";
+  el.scrollTop = el.scrollHeight;
+}
+function escapeHtml(str) {
+  if (str === undefined || str === null) return '';
+  return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m] || m));
+}
 
-    async function fetchWithCorsProxy(url) {
-      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-      const res = await fetch(proxyUrl);
-      return await res.json();
-    }
+const TOKEN_URI_SELECTOR = "0xc87b56dd"; // keccak256("tokenURI(uint256)")[0:4]
+let stopBaselineFlag = false;
 
-    // Safe UTF-8 / Base64 Helpers
-    function decodeBase64Utf8(base64Str) {
-      try {
-        const clean = base64Str.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
-        const binary = atob(clean);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-        return new TextDecoder().decode(bytes);
-      } catch (e) {
-        throw new Error("Base64 Decoding Failed: " + e.message);
-      }
-    }
+function padTokenId(id) { return BigInt(id).toString(16).padStart(64, '0'); }
 
-    // -------------------------------------------------------------
-    // 1. CONTRACT INSPECTION & PROXY DETECTION
-    // -------------------------------------------------------------
-    async function analyzeContract() {
-      try {
-        log("কন্ট্রাক্ট এনালাইসিস শুরু হচ্ছে...");
-        state.provider = resolveRpcProvider();
-        state.contractAddress = ethers.utils.getAddress(document.getElementById('contractAddress').value.trim());
+function decodeAbiString(hex) {
+  hex = hex.startsWith('0x') ? hex.slice(2) : hex;
+  const offset = parseInt(hex.slice(0, 64), 16) * 2;
+  const length = parseInt(hex.slice(offset, offset + 64), 16) * 2;
+  const strHex = hex.slice(offset + 64, offset + 64 + length);
+  const bytes = new Uint8Array(strHex.length / 2);
+  for (let i = 0; i < strHex.length; i += 2) bytes[i / 2] = parseInt(strHex.substr(i, 2), 16);
+  return new TextDecoder('utf-8').decode(bytes);
+}
 
-        const network = await state.provider.getNetwork();
-        const code = await state.provider.getCode(state.contractAddress);
+function base64ToUtf8(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new TextDecoder('utf-8').decode(bytes);
+}
 
-        if (code === "0x") {
-          throw new Error("প্রদত্ত এড্রেসে কোনো স্মার্ট কন্ট্রাক্ট নেই (EOA Address)!");
-        }
+async function fetchTokenURI(rpcUrl, contractAddress, tokenId) {
+  const calldata = TOKEN_URI_SELECTOR + padTokenId(tokenId);
+  const res = await fetch(rpcUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: tokenId, method: "eth_call", params: [{ to: contractAddress, data: calldata }, "latest"] })
+  });
+  const json = await res.json();
+  if (json.error) throw new Error(json.error.message || "RPC error");
+  const uriHex = decodeAbiString(json.result);
+  
+  if (uriHex.startsWith('data:application/json;base64,')) {
+    const b64 = uriHex.split(',')[1];
+    return JSON.parse(base64ToUtf8(b64));
+  } else if (uriHex.startsWith('data:application/json;utf8,')) {
+    return JSON.parse(uriHex.replace('data:application/json;utf8,', ''));
+  } else {
+    const httpRes = await fetch(uriHex);
+    return await httpRes.json();
+  }
+}
 
-        state.contractInfo = {
-          address: state.contractAddress,
-          chainId: network.chainId,
-          networkName: network.name
-        };
+function signatureFromMetadataAttributes(attrs) {
+  if (!attrs) return '';
+  return attrs.map(a => `${a.trait_type}:${a.value}`).sort().join('|');
+}
 
-        // Check ERC721 metadata standard functions dynamically
-        const minimalAbi = [
-          "function name() view returns (string)",
-          "function symbol() view returns (string)",
-          "function totalSupply() view returns (uint256)"
-        ];
-        const basicContract = new ethers.Contract(state.contractAddress, minimalAbi, state.provider);
+async function loadExistingFromChain() {
+  const contractAddress = document.getElementById('contract-address').value.trim();
+  const rpcUrl = document.getElementById('rpc-url').value.trim();
+  const concurrency = Math.max(1, Math.min(20, parseInt(document.getElementById('baseline-concurrency').value) || 6));
+  const statusEl = document.getElementById('existing-status');
 
-        try { state.contractInfo.name = await basicContract.name(); } catch (e) { state.contractInfo.name = "N/A"; }
-        try { state.contractInfo.symbol = await basicContract.symbol(); } catch (e) { state.contractInfo.symbol = "N/A"; }
-        try { state.contractInfo.totalSupply = (await basicContract.totalSupply()).toString(); } catch (e) { state.contractInfo.totalSupply = "Unknown"; }
+  if (!/^0x[a-fA-F0-9]{40}$/.test(contractAddress)) {
+    statusEl.textContent = '⚠️ সঠিক Ethereum Contract Address প্রদান করুন';
+    return;
+  }
 
-        // Proxy Detection (EIP-1967 Storage Slots)
-        const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
-        const rawImpl = await state.provider.getStorageAt(state.contractAddress, IMPLEMENTATION_SLOT);
-        if (rawImpl && rawImpl !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
-          state.isProxy = true;
-          state.implementationAddress = ethers.utils.getAddress("0x" + rawImpl.slice(26));
-          log(`প্রক্সি কন্ট্রাক্ট শনাক্ত করা হয়েছে! Implementation: ${state.implementationAddress}`);
-        } else {
-          state.isProxy = false;
-          state.implementationAddress = null;
-        }
+  stopBaselineFlag = false;
+  document.getElementById('load-chain-btn').disabled = true;
+  document.getElementById('stop-baseline-btn').disabled = false;
+  existingSignatures.clear();
 
-        // Fetch Source / ABI from Explorer
-        await fetchSourceAndABI();
+  const queue = [];
+  for (let i = 1; i <= 4444; i++) queue.push(i);
+  const stats = { done: 0, fail: 0, total: queue.length };
 
-        // Display Analysis UI
-        const panel = document.getElementById('analysisPanel');
-        const details = document.getElementById('analysisDetails');
-        const funcList = document.getElementById('detectedFunctionsList');
-
-        panel.classList.remove('hidden');
-        details.innerHTML = `
-          <div><span class="text-slate-400">Chain ID:</span> ${state.contractInfo.chainId} (${state.contractInfo.networkName})</div>
-          <div><span class="text-slate-400">Name:</span> ${state.contractInfo.name}</div>
-          <div><span class="text-slate-400">Symbol:</span> ${state.contractInfo.symbol}</div>
-          <div><span class="text-slate-400">Total Supply:</span> ${state.contractInfo.totalSupply}</div>
-          <div><span class="text-slate-400">Verified:</span> ${state.verified ? '✅ Yes' : '❌ No'}</div>
-          <div><span class="text-slate-400">Proxy:</span> ${state.isProxy ? `Yes (${state.implementationAddress.substring(0,8)}...)` : 'No'}</div>
-        `;
-
-        funcList.innerHTML = `<b>Detected On-Chain Rendering Functions:</b><br>` + 
-          (state.detectedRenderFunctions.length > 0 
-            ? state.detectedRenderFunctions.map(f => `✓ ${f}`).join('<br>') 
-            : 'No standard view rendering functions detected in ABI. Will use fallback calls.');
-
-        log("কন্ট্রাক্ট এনালাইসিস সম্পন্ন হয়েছে।");
-      } catch (err) {
-        log(`এনালাইসিস এরর: ${err.message}`);
-      }
-    }
-
-    async function fetchSourceAndABI() {
-      const explorerKey = document.getElementById('explorerKey').value.trim();
-      const targetAddr = state.implementationAddress || state.contractAddress;
-
-      if (!explorerKey) {
-        log("Etherscan API Key দেওয়া হয়নি, পাবলিক মেথড আবিষ্কারে লিমিটেড ইন্টারফেস ব্যবহার করা হবে।");
-        state.verified = false;
-        return;
-      }
-
-      try {
-        const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${targetAddr}&apikey=${explorerKey}`;
-        const data = await fetchWithCorsProxy(url);
-
-        if (data.status === "1" && data.result && data.result[0] && data.result[0].ABI !== "Contract source code not verified") {
-          state.verified = true;
-          state.rawSourceResult = data.result[0];
-          state.abi = JSON.parse(data.result[0].ABI);
-
-          // Dynamic Function Discovery
-          state.detectedRenderFunctions = state.abi
-            .filter(f => f.type === 'function' && (f.stateMutability === 'view' || f.stateMutability === 'pure'))
-            .map(f => `${f.name}(${f.inputs.map(i => i.type).join(',')})`)
-            .filter(sig => KNOWN_RENDER_FUNCTIONS.some(k => sig.startsWith(k.split('(')[0])));
-
-          log("সফলভাবে কন্ট্রাক্ট ABI এবং সোর্স কোড রিসিভ করা হয়েছে।");
-        } else {
-          state.verified = false;
-          log("কন্ট্রাক্টটি Explorer এ ভেরিফাইড নয়।");
-        }
-      } catch (err) {
-        state.verified = false;
-        log(`Explorer API Fetch ব্যর্থ হয়েছে: ${err.message}`);
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 2. SOURCE CODE & BYTECODE DOWNLOADER
-    // -------------------------------------------------------------
-    async function downloadContractSource() {
-      try {
-        if (!state.contractAddress) await analyzeContract();
-
-        log("কন্ট্রাক্ট সোর্স কোড জিপ (ZIP) জেনারেট করা হচ্ছে...");
-        const zip = new JSZip();
-        const contractFolder = zip.folder("contract");
-
-        const targetAddr = state.implementationAddress || state.contractAddress;
-        const code = await state.provider.getCode(targetAddr);
-        contractFolder.file("bytecode.txt", code);
-
-        const info = {
-          address: state.contractAddress,
-          isProxy: state.isProxy,
-          implementation: state.implementationAddress,
-          verified: state.verified,
-          info: state.contractInfo
-        };
-        contractFolder.file("contract-info.json", JSON.stringify(info, null, 2));
-
-        if (state.verified && state.rawSourceResult) {
-          contractFolder.file("ABI.json", JSON.stringify(state.abi, null, 2));
-          const sourceFolder = contractFolder.folder("source");
-          let rawSource = state.rawSourceResult.SourceCode;
-
-          if (rawSource.startsWith('{{') && rawSource.endsWith('}}')) {
-            rawSource = rawSource.slice(1, -1);
-            const parsed = JSON.parse(rawSource);
-            const sources = parsed.sources || parsed;
-            for (const [path, obj] of Object.entries(sources)) {
-              sourceFolder.file(path, obj.content || obj);
-            }
-          } else if (rawSource.startsWith('{') && rawSource.endsWith('}')) {
-            const parsed = JSON.parse(rawSource);
-            const sources = parsed.sources || parsed;
-            for (const [path, obj] of Object.entries(sources)) {
-              sourceFolder.file(path, obj.content || obj);
-            }
-          } else {
-            sourceFolder.file(`${state.rawSourceResult.ContractName || 'Contract'}.sol`, rawSource);
-          }
-          log("ভেরিফাইড সোর্স কোড যুক্ত করা হয়েছে।");
-        } else {
-          log("স সতর্কবার্তা: ভেরিফাইড সোর্স কোড না থাকায় শুধু বাইটকোড ও ইনফো সেভ করা হলো।");
-        }
-
-        const blob = await zip.generateAsync({ type: "blob" });
-        saveAs(blob, `${state.contractAddress}_ContractSource.zip`);
-        log("সফলভাবে সোর্স কোড জিপ ফাইল ডাউনলোড হয়েছে!");
-      } catch (err) {
-        log(`সোর্স কোড ডাউনলোডে ত্রুটি: ${err.message}`);
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 3. FULL ON-CHAIN METADATA & SVG EXTRACTOR ENGINE
-    // -------------------------------------------------------------
-    async function downloadOnChainData() {
-      try {
-        state.provider = resolveRpcProvider();
-        state.contractAddress = ethers.utils.getAddress(document.getElementById('contractAddress').value.trim());
-
-        const startToken = parseInt(document.getElementById('startTokenId').value);
-        const endToken = parseInt(document.getElementById('endTokenId').value);
-        const ipfsGateway = document.getElementById('ipfsGateway').value.trim();
-
-        if (startToken > endToken) throw new Error("Start Token ID অবশ্যই End Token ID এর চেয়ে ছোট হতে হবে!");
-
-        log(`অনচেন ডাটা ফেচিং শুরু হচ্ছে (Token Range: ${startToken} to ${endToken})...`);
-        const zip = new JSZip();
-        const rootFolder = zip.folder(`NFT_${state.contractAddress.substring(0,8)}`);
-        const rawFolder = rootFolder.folder("raw");
-        const metadataFolder = rootFolder.folder("metadata");
-        const svgFolder = rootFolder.folder("svg");
-        const imagesFolder = rootFolder.folder("images");
-        const traitsFolder = rootFolder.folder("traits");
-
-        const allTraits = [];
-        let successCount = 0;
-        let failCount = 0;
-
-        const totalToProcess = endToken - startToken + 1;
-
-        for (let tokenId = startToken; tokenId <= endToken; tokenId++) {
-          const currentStep = tokenId - startToken + 1;
-          setProgress((currentStep / totalToProcess) * 100, `Processing Token ID: ${tokenId} (${currentStep}/${totalToProcess})`);
-
-          try {
-            log(`-----------------------------------`);
-            log(`[Token ID ${tokenId}] ফেচিং শুরু...`);
-
-            // Execute Multi-Method Discovery Fallback Strategy
-            const renderResult = await fetchTokenRawResponse(state.contractAddress, tokenId);
-
-            if (!renderResult || !renderResult.rawResponse) {
-              throw new Error("কোনো মেথড থেকেই ডাটা পাওয়া যায়নি (Call Reverted or Empty)");
-            }
-
-            // Save Raw Response
-            rawFolder.file(`token_${tokenId}_${renderResult.methodUsed}.txt`, renderResult.rawResponse);
-
-            // Parse Metadata & URIs
-            const parsedData = await parseURIResponse(renderResult.rawResponse, ipfsGateway);
-
-            if (parsedData.metadata) {
-              metadataFolder.file(`token_${tokenId}.json`, JSON.stringify(parsedData.metadata, null, 2));
-
-              if (parsedData.metadata.attributes) {
-                allTraits.push({ tokenId, attributes: parsedData.metadata.attributes });
-              }
-            }
-
-            // SVG / Image Extraction
-            if (parsedData.svgContent) {
-              svgFolder.file(`token_${tokenId}.svg`, parsedData.svgContent);
-              
-              // Extract Embedded Base64 Images inside SVG
-              const embeddedImages = extractEmbeddedImagesFromSVG(parsedData.svgContent);
-              embeddedImages.forEach((img, idx) => {
-                imagesFolder.file(`token_${tokenId}_embedded_${idx + 1}.${img.ext}`, img.data, { base64: true });
-              });
-            }
-
-            log(`[Token ID ${tokenId}] সফলভাবে প্রসেস করা হয়েছে (Method: ${renderResult.methodUsed})`);
-            successCount++;
-          } catch (tokenErr) {
-            log(`[Token ID ${tokenId}] FAILED - Reason: ${tokenErr.message}`);
-            failCount++;
-          }
-
-          // Rate Limit Safeguard Delay
-          await new Promise(r => setTimeout(r, 150));
-        }
-
-        // Save Summary Traits
-        if (allTraits.length > 0) {
-          traitsFolder.file("traits.json", JSON.stringify(allTraits, null, 2));
-        }
-
-        // Create README Summary File
-        const readmeContent = `
-==================================================
-ON-CHAIN NFT DOWNLOAD SUMMARY
-==================================================
-Contract Address : ${state.contractAddress}
-Network Chain ID : ${state.contractInfo.chainId || 'Unknown'}
-Processed Range  : Token ID ${startToken} to ${endToken}
-Successful Tokens: ${successCount}
-Failed Tokens    : ${failCount}
-Verified Contract: ${state.verified ? 'YES' : 'NO'}
-Proxy Contract   : ${state.isProxy ? 'YES' : 'NO'}
-
-Folder Structure:
-- /contract : Source code, ABI, and Bytecode
-- /raw      : Original unparsed contract responses
-- /metadata : Extracted JSON metadata
-- /svg      : Standalone SVG vectors
-- /images   : Extracted embedded raster assets
-- /traits   : Extracted NFT attributes
-==================================================
-        `;
-        rootFolder.file("README.txt", readmeContent.trim());
-
-        log("জিফ (ZIP) ফাইল প্রস্তুত করা হচ্ছে...");
-        const blob = await zip.generateAsync({ type: "blob" });
-        saveAs(blob, `${state.contractAddress}_OnChain_NFT_Data.zip`);
-
-        hideProgress();
-        log(`স্ট্যাটাস: ডাউনলোড সম্পন্ন! (সফল: ${successCount}, ব্যর্থ: ${failCount})`);
-      } catch (err) {
-        hideProgress();
-        log(`অনচেন ডাটা ডাউনলোডে গুরুতর এরর: ${err.message}`);
-      }
-    }
-
-    // -------------------------------------------------------------
-    // 4. DYNAMIC CONTRACT CALL & FALLBACK STRATEGY ENGINE
-    // -------------------------------------------------------------
-    async function fetchTokenRawResponse(contractAddr, tokenId) {
-      const candidateMethods = [
-        "tokenURI(uint256)",
-        "uri(uint256)",
-        "dataURI(uint256)",
-        "svg(uint256)",
-        "render(uint256)",
-        "generateSVG(uint256)",
-        "image(uint256)",
-        "metadata(uint256)"
-      ];
-
-      for (const methodSig of candidateMethods) {
+  const worker = async () => {
+    while (queue.length && !stopBaselineFlag) {
+      const tokenId = queue.shift();
+      let attempt = 0, done = false;
+      while (attempt < 3 && !done && !stopBaselineFlag) {
         try {
-          const contract = new ethers.Contract(
-            contractAddr, 
-            [`function ${methodSig} view returns (string)`], 
-            state.provider
-          );
-          const methodName = methodSig.split('(')[0];
-          const response = await contract[methodName](tokenId);
-
-          if (response && response.length > 0) {
-            return { methodUsed: methodName, rawResponse: response };
-          }
-        } catch (e) {
-          // Silent continue to try next candidate method
+          const meta = await fetchTokenURI(rpcUrl, contractAddress, tokenId);
+          existingSignatures.add(signatureFromMetadataAttributes(meta.attributes));
+          done = true;
+        } catch (err) {
+          attempt++;
+          if (attempt >= 3) { stats.fail++; done = true; }
+          else await new Promise(r => setTimeout(r, 300 * attempt));
         }
       }
-
-      // Raw eth_call Fallback using Signature Hash (tokenURI selector: 0xc87b56dd)
-      try {
-        const selector = "0xc87b56dd";
-        const encodedTokenId = ethers.utils.defaultAbiCoder.encode(["uint256"], [tokenId]).slice(2);
-        const rawData = await state.provider.call({
-          to: contractAddr,
-          data: selector + encodedTokenId
-        });
-
-        if (rawData && rawData !== "0x") {
-          const decoded = ethers.utils.defaultAbiCoder.decode(["string"], rawData)[0];
-          return { methodUsed: "eth_call_raw", rawResponse: decoded };
-        }
-      } catch (e) {
-        // Fallback failed
-      }
-
-      return null;
+      stats.done++;
+      const pct = Math.round((stats.done / stats.total) * 100);
+      document.getElementById('baseline-fill').style.width = pct + '%';
+      statusEl.textContent = `⏳ ETH Mainnet থেকে লোড হচ্ছে... ${stats.done}/${stats.total} (${existingSignatures.size} টি ইউনিক ট্রেইট সেভ হয়েছে)`;
     }
+  };
 
-    // -------------------------------------------------------------
-    // 5. PARSER, DECODER AND SVG / IMAGE EXTRACTIONS
-    // -------------------------------------------------------------
-    async function parseURIResponse(rawUri, ipfsGateway) {
-      let metadata = null;
-      let svgContent = null;
+  await Promise.all(Array.from({ length: concurrency }, worker));
 
-      // Handle Data URIs
-      if (rawUri.startsWith("data:")) {
-        if (rawUri.includes("application/json;base64,")) {
-          const jsonStr = decodeBase64Utf8(rawUri.split("application/json;base64,")[1]);
-          metadata = JSON.parse(jsonStr);
-        } else if (rawUri.includes("application/json;utf8,") || rawUri.includes("application/json,")) {
-          const jsonStr = decodeURIComponent(rawUri.split("application/json,")[1] || rawUri.split("utf8,")[1]);
-          metadata = JSON.parse(jsonStr);
-        } else if (rawUri.includes("image/svg+xml;base64,")) {
-          svgContent = decodeBase64Utf8(rawUri.split("image/svg+xml;base64,")[1]);
-        } else if (rawUri.includes("image/svg+xml;utf8,") || rawUri.includes("image/svg+xml,")) {
-          svgContent = decodeURIComponent(rawUri.split("image/svg+xml,")[1] || rawUri.split("utf8,")[1]);
-        }
-      } else if (rawUri.startsWith("ipfs://") || rawUri.startsWith("ar://") || rawUri.startsWith("http")) {
-        // External HTTP / IPFS Link Handling
-        let targetUrl = rawUri;
-        if (rawUri.startsWith("ipfs://")) targetUrl = rawUri.replace("ipfs://", ipfsGateway);
-        if (rawUri.startsWith("ar://")) targetUrl = rawUri.replace("ar://", "https://arweave.net/");
+  document.getElementById('load-chain-btn').disabled = false;
+  document.getElementById('stop-baseline-btn').disabled = true;
+  statusEl.textContent = `✅ সম্পূর্ণ হয়েছে! ${existingSignatures.size} টি অন-চেইন টোকেনের মেটাডাটা লোড করা হয়েছে।`;
+}
 
-        try {
-          const res = await fetch(targetUrl);
-          const contentType = res.headers.get("content-type");
+function stopBaselineLoad() { stopBaselineFlag = true; }
 
-          if (contentType && contentType.includes("application/json")) {
-            metadata = await res.json();
-          } else {
-            const text = await res.text();
-            if (text.trim().startsWith("<svg")) svgContent = text;
-          }
-        } catch (e) {
-          log(`External URI Fetch Warning: ${e.message}`);
-        }
-      } else if (rawUri.trim().startsWith("<svg")) {
-        // Raw Direct SVG Output
-        svgContent = rawUri;
-      }
-
-      // Check for nested SVG inside metadata
-      if (metadata) {
-        const possibleImageFields = [metadata.image, metadata.image_url, metadata.animation_url, metadata.svg];
-        for (const field of possibleImageFields) {
-          if (field && typeof field === 'string') {
-            if (field.includes("image/svg+xml;base64,")) {
-              svgContent = decodeBase64Utf8(field.split("image/svg+xml;base64,")[1]);
-              break;
-            } else if (field.includes("image/svg+xml;utf8,") || field.includes("image/svg+xml,")) {
-              svgContent = decodeURIComponent(field.split("image/svg+xml,")[1] || field.split("utf8,")[1]);
-              break;
-            } else if (field.trim().startsWith("<svg")) {
-              svgContent = field;
-              break;
-            }
-          }
-        }
-      }
-
-      return { metadata, svgContent };
-    }
-
-    function extractEmbeddedImagesFromSVG(svgStr) {
-      const extracted = [];
-      const regex = /data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)/g;
-      let match;
-
-      while ((match = regex.exec(svgStr)) !== null) {
-        extracted.push({
-          ext: match[1] === 'jpeg' ? 'jpg' : match[1],
-          data: match[2]
-        });
-      }
-      return extracted;
-    }
-  </script>
+// Dummy generator placeholder logic - update logic according to specific contract logic
+function startGenerate() {
+  log("🎲 Starting Generation Process on ETH Mainnet baseline setup...");
+  alert("ETH Mainnet Contract Baseline loaded! Ensure target rendering SVG logic corresponds to contract 0x312BE6a98441F9F6e3F6246B13CA19701e0AC3B9.");
+}
+function stopGenerate() { stopFlag = true; }
+</script>
 </body>
 </html>

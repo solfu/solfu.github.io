@@ -1,134 +1,187 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ETH Mainnet On-Chain Layer Downloader</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+  <title>NFT Layer Exporter & Downloader</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
-    body { background: #0f172a; color: #f8fafc; padding: 20px; }
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: #0f172a; color: #f8fafc; padding: 20px; margin: 0; }
     .container { max-width: 1000px; margin: 0 auto; }
     h1 { text-align: center; color: #38bdf8; margin-bottom: 20px; }
-    .form-box { background: #1e293b; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-    input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; }
-    button { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .status { text-align: center; color: #38bdf8; margin: 15px 0; word-break: break-all; font-weight: 500; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
-    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-    .svg-container { width: 140px; height: 140px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 10px; border: 1px dashed #334155; }
-    .svg-container svg { width: 100%; height: 100%; object-fit: contain; }
-    .dl-btn { background: #10b981; margin-top: 10px; width: 100%; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; }
+    .card { background: #1e293b; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px; }
+    .input-group { display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px; }
+    label { font-weight: bold; color: #94a3b8; }
+    input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 6px; font-size: 14px; }
+    button { background: #0284c7; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    button:hover { background: #0369a1; }
+    button:disabled { background: #475569; cursor: not-allowed; }
+    #status { padding: 10px; border-radius: 6px; background: #0f172a; color: #38bdf8; margin-top: 10px; font-size: 14px; display: none; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+    .trait-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 10px; text-align: center; }
+    .trait-card h4 { margin: 5px 0; color: #f43f5e; font-size: 14px; }
+    .trait-card p { margin: 0; color: #cbd5e1; font-size: 12px; }
+    .trait-card small { color: #64748b; font-size: 10px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>ETH On-Chain Layer Downloader</h1>
-    
-    <div class="form-box">
-      <input type="text" id="rpcUrl" placeholder="ETH Mainnet RPC URL" />
-      <input type="text" id="contractAddress" placeholder="Contract Address (0x312...)" />
-      <button onclick="fetchLayers()">Fetch Layers</button>
-    </div>
 
-    <div class="status" id="status"></div>
-    <div class="grid" id="grid"></div>
+<div class="container">
+  <h1>NFT On-Chain Layer Extractor</h1>
+
+  <div class="card">
+    <div class="input-group">
+      <label for="rpcUrl">RPC URL (e.g. Base / EVM Network RPC)</label>
+      <input type="text" id="rpcUrl" placeholder="https://mainnet.base.org">
+    </div>
+    <div class="input-group">
+      <label for="contractAddress">Diamond Contract Address</label>
+      <input type="text" id="contractAddress" placeholder="0x...">
+    </div>
+    <div style="display: flex; gap: 10px;">
+      <button id="fetchBtn" onclick="startExtraction()">১. লেয়ার ফেচ করুন</button>
+      <button id="downloadBtn" onclick="downloadZip()" disabled>২. ZIP ডাউনলোড করুন</button>
+    </div>
+    <div id="status"></div>
   </div>
 
-  <script>
-    // Exact struct definition for diamond facets / custom token storage
-    const abi = [
-      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
-      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, bytes pixels))"
-    ];
+  <div class="card">
+    <h3>এক্সট্র্যাক্ট হওয়া লেয়ারসমূহ (<span id="count">0</span>)</h3>
+    <div class="grid" id="layerGrid"></div>
+  </div>
+</div>
 
-    async function fetchLayers() {
-      const rpc = document.getElementById('rpcUrl').value.trim();
-      const addr = document.getElementById('contractAddress').value.trim();
-      const status = document.getElementById('status');
-      const grid = document.getElementById('grid');
+<script>
+  let extractedLayers = [];
 
-      grid.innerHTML = "";
-      if (!rpc || !addr) return alert("RPC URL and Address required!");
+  const ABI = [
+    "function traitTypes(uint256 layerIndex, uint256 traitIndex) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))"
+  ];
 
-      status.innerText = "Connecting to ETH Mainnet...";
+  function showStatus(msg) {
+    const el = document.getElementById('status');
+    el.style.display = 'block';
+    el.innerText = msg;
+  }
 
-      try {
-        const provider = new ethers.JsonRpcProvider(rpc);
-        const contract = new ethers.Contract(addr, abi, provider);
+  async function startExtraction() {
+    const rpcUrl = document.getElementById('rpcUrl').value.trim();
+    const address = document.getElementById('contractAddress').value.trim();
 
-        let totalLoaded = 0;
+    if (!rpcUrl || !address) {
+      alert("RPC URL এবং Contract Address দিন!");
+      return;
+    }
 
-        for (let categoryIdx = 0; categoryIdx < 15; categoryIdx++) {
-          let hasItemsInCat = false;
+    extractedLayers = [];
+    document.getElementById('layerGrid').innerHTML = '';
+    document.getElementById('count').innerText = '0';
+    document.getElementById('fetchBtn').disabled = true;
+    document.getElementById('downloadBtn').disabled = true;
 
-          for (let traitIdx = 0; traitIdx < 50; traitIdx++) {
-            status.innerText = `Scanning Category [${categoryIdx}] - Trait [${traitIdx}]...`;
+    try {
+      showStatus("কন্ট্রাক্টের সাথে কানেক্ট করা হচ্ছে...");
+      const provider = new ethers.JsonRpcProvider(rpcUrl);
+      const contract = new ethers.Contract(address, ABI, provider);
 
-            try {
-              const res = await contract.traitTypes(categoryIdx, traitIdx);
+      let totalFound = 0;
+      const MAX_LAYERS = 15;
+      const MAX_TRAITS = 30;
 
-              if (res) {
-                const name = res.traitName || res[0] || "";
-                const type = res.traitType || res[1] || `Cat ${categoryIdx}`;
-                let rawPixels = res.pixels || res[2] || "";
+      for (let l = 0; l < MAX_LAYERS; l++) {
+        let traitFoundInLayer = false;
 
-                if (Array.isArray(rawPixels)) {
-                  rawPixels = rawPixels.join("");
-                }
+        for (let t = 0; t < MAX_TRAITS; t++) {
+          showStatus(`ফেচ করা হচ্ছে: Layer [${l}], Trait [${t}]...`);
 
-                if (!name && !rawPixels) continue;
+          try {
+            const trait = await contract.traitTypes(l, t);
 
-                hasItemsInCat = true;
-                totalLoaded++;
+            if (!trait.traitName && !trait.traitType) break;
 
-                // Build SVG markup if not already enclosed
-                let formattedSvg = "";
-                if (typeof rawPixels === 'string' && rawPixels.includes("<svg")) {
-                  formattedSvg = rawPixels;
-                } else {
-                  formattedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawPixels}</svg>`;
-                }
+            const item = {
+              layerIndex: l,
+              traitIndex: t,
+              traitName: trait.traitName || `Trait_${t}`,
+              traitType: trait.traitType || `Layer_${l}`,
+              pixels: Array.from(trait.pixels),
+              pixelCount: trait.pixelCount.map(n => n.toString())
+            };
 
-                addCard(type, name || `Trait ${traitIdx}`, formattedSvg, categoryIdx, traitIdx);
-              }
-            } catch (err) {
-              // If index out of bounds, step out of this category iteration
-              break;
-            }
+            extractedLayers.push(item);
+            renderCard(item);
+            totalFound++;
+            document.getElementById('count').innerText = totalFound;
+            traitFoundInLayer = true;
+
+          } catch (err) {
+            break; // 해당 Layer-এর শেষ Trait-এ পৌছালে
           }
         }
 
-        status.innerText = totalLoaded > 0 
-          ? `Success! Loaded ${totalLoaded} layers.` 
-          : "No layers found. Check if the RPC key has active rate-limits or if Etherscan verified ABI differs.";
-
-      } catch (err) {
-        console.error(err);
-        status.innerText = "Error: " + (err.reason || err.message);
+        if (!traitFoundInLayer && l > 0) break;
       }
-    }
 
-    function addCard(category, name, svg, catIdx, traitIdx) {
-      const grid = document.getElementById('grid');
-      card = document.createElement('div');
-      card.className = 'card';
-      card.innerHTML = `
-        <div class="svg-container">${svg}</div>
-        <strong style="font-size: 11px; color: #38bdf8; text-transform: uppercase;">${category}</strong>
-        <span style="font-size: 14px; font-weight: bold; margin-top: 4px; text-align: center;">${name}</span>
-        <button class="dl-btn" onclick="download('${catIdx}_${traitIdx}_${name}', \`${encodeURIComponent(svg)}\`)">Download SVG</button>
-      `;
-      grid.appendChild(card);
-    }
+      if (extractedLayers.length > 0) {
+        showStatus(`সফলভাবে মোট ${extractedLayers.length} টি লেয়ার পাওয়া গেছে!`);
+        document.getElementById('downloadBtn').disabled = false;
+      } else {
+        showStatus("কোনো লেয়ার ডাটা পাওয়া যায়নি। Contract Address বা RPC ঠিক আছে কি না দেখুন।");
+      }
 
-    function download(filename, encodedSvg) {
-      const blob = new Blob([decodeURIComponent(encodedSvg)], { type: "image/svg+xml" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = `${filename}.svg`;
-      a.click();
+    } catch (err) {
+      console.error(err);
+      showStatus("ত্রুটি: " + err.message);
+    } finally {
+      document.getElementById('fetchBtn').disabled = false;
     }
-  </script>
+  }
+
+  function renderCard(item) {
+    const grid = document.getElementById('layerGrid');
+    const card = document.createElement('div');
+    card.className = 'trait-card';
+    card.innerHTML = `
+      <h4>${item.traitType}</h4>
+      <p><b>${item.traitName}</b></p>
+      <small>L: ${item.layerIndex} | T: ${item.traitIndex}</small><br>
+      <small>Pixels: ${item.pixels.length}</small>
+    `;
+    grid.appendChild(card);
+  }
+
+  async function downloadZip() {
+    if (extractedLayers.length === 0) return;
+
+    showStatus("ZIP ফাইল জেনারেট করা হচ্ছে...");
+    const zip = new JSZip();
+
+    // ১. সম্পূর্ণ কন্টেন্ট একটি JSON ফাইলে
+    zip.file("all_layers_complete.json", JSON.stringify(extractedLayers, null, 2));
+
+    // ২. ফোল্ডার স্ট্রাকচারে আলাদা JSON তৈরি
+    const layersFolder = zip.folder("layers");
+
+    extractedLayers.forEach(item => {
+      const folderName = item.traitType.replace(/[^a-zA-Z0-9_-]/g, "_");
+      const fileName = `${item.traitIndex}_${item.traitName.replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
+      
+      const subFolder = layersFolder.folder(folderName);
+      subFolder.file(fileName, JSON.stringify(item, null, 2));
+    });
+
+    // ZIP ডাউনলোড
+    const content = await zip.generateAsync({ type: "blob" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(content);
+    a.download = "nft_layers_data.zip";
+    a.click();
+
+    showStatus("ZIP ফাইল ডাউনলোড সম্পন্ন হয়েছে!");
+  }
+</script>
+
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>On-Chain NFT Layer Downloader</title>
+  <title>ETH Mainnet On-Chain Layer Downloader</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
@@ -13,21 +13,21 @@
     .form-box { background: #1e293b; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
     input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; }
     button { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .status { text-align: center; color: #38bdf8; margin: 15px 0; word-break: break-all; }
+    .status { text-align: center; color: #38bdf8; margin: 15px 0; word-break: break-all; font-weight: 500; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
-    .svg-container { width: 140px; height: 140px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 10px; }
+    .svg-container { width: 140px; height: 140px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 10px; border: 1px dashed #334155; }
     .svg-container svg { width: 100%; height: 100%; object-fit: contain; }
     .dl-btn { background: #10b981; margin-top: 10px; width: 100%; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>On-Chain Layer Downloader</h1>
+    <h1>ETH On-Chain Layer Downloader</h1>
     
     <div class="form-box">
-      <input type="text" id="rpcUrl" placeholder="Enter RPC URL (e.g. Robinhood / ETH RPC)" />
-      <input type="text" id="contractAddress" placeholder="Enter Diamond Contract Address (0x...)" />
+      <input type="text" id="rpcUrl" placeholder="ETH Mainnet RPC (Alchemy/Infura/Public)" />
+      <input type="text" id="contractAddress" placeholder="Diamond Contract Address (0x...)" />
       <button onclick="fetchLayers()">Fetch Layers</button>
     </div>
 
@@ -36,9 +36,12 @@
   </div>
 
   <script>
-    // ICustomToken Dynamic ABI
+    // Multiple ABI signatures to support various Diamond / On-Chain architectures
     const abi = [
-      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))"
+      "function traitTypes(uint256, uint256) view returns (string traitName, string traitType, string pixels)",
+      "function getTraitDetails(uint256, uint256) view returns (string name, string category, string svgData)",
+      "function traitDetails(uint256, uint256) view returns (string, string, string)",
+      "function getTrait(uint256, uint256) view returns (string, string)"
     ];
 
     async function fetchLayers() {
@@ -48,68 +51,98 @@
       const grid = document.getElementById('grid');
 
       grid.innerHTML = "";
-      if (!rpc || !addr) return alert("RPC URL এবং Contract Address দিন");
+      if (!rpc || !addr) return alert("RPC URL and Address are required!");
 
-      status.innerText = "Connecting to contract...";
+      status.innerText = "Connecting to ETH Mainnet Contract...";
 
       try {
         const provider = new ethers.JsonRpcProvider(rpc);
         const contract = new ethers.Contract(addr, abi, provider);
 
         let totalLayers = 0;
-        
-        // Loop through Categories (0 to 10)
-        for (let cat = 0; cat < 15; cat++) {
-          let foundInCat = false;
-          
-          // Loop through Traits in Category (0 to 50)
-          for (let idx = 0; idx < 50; idx++) {
+
+        // Loop through Categories
+        for (let cat = 0; cat < 12; cat++) {
+          let emptyInRow = 0;
+
+          // Loop through Indexes
+          for (let idx = 0; idx < 40; idx++) {
+            status.innerText = `Scanning Category: ${cat} | Trait Index: ${idx}...`;
+            
+            let res = null;
+            let traitName = "";
+            let traitCategory = "";
+            let svgData = "";
+
+            // Try primary method
             try {
-              status.innerText = `Checking Category ${cat}, Index ${idx}...`;
-              const trait = await contract.traitTypes(cat, idx);
+              res = await contract.traitTypes(cat, idx);
+            } catch (e1) {
+              try {
+                res = await contract.getTraitDetails(cat, idx);
+              } catch (e2) {
+                try {
+                  res = await contract.traitDetails(cat, idx);
+                } catch (e3) {
+                  // Revert means no item at this index
+                }
+              }
+            }
 
-              if (trait && (trait.traitName || trait[0])) {
-                const name = trait.traitName || trait[0];
-                const type = trait.traitType || trait[1];
-                const pixels = trait.pixels || trait[2];
+            if (res) {
+              traitName = res[0] || res.traitName || res.name || "";
+              traitCategory = res[1] || res.traitType || res.category || `Category ${cat}`;
+              svgData = res[2] || res.pixels || res.svgData || "";
 
-                if (!name && pixels.length === 0) break;
-
-                foundInCat = true;
+              if (traitName || svgData) {
+                emptyInRow = 0;
                 totalLayers++;
 
-                let rawSvg = pixels.join("");
-                let svgContent = rawSvg.includes("<svg") ? rawSvg : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawSvg}</svg>`;
+                let formattedSvg = svgData.includes("<svg") 
+                  ? svgData 
+                  : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${svgData}</svg>`;
 
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                  <div class="svg-container">${svgContent}</div>
-                  <strong style="font-size: 12px; color: #38bdf8;">${type || 'Cat ' + cat}</strong>
-                  <span style="font-size: 14px; font-weight: bold; margin-top: 4px;">${name || 'Layer ' + idx}</span>
-                  <button class="dl-btn" onclick="download('${cat}_${idx}_${name}', \`${encodeURIComponent(svgContent)}\`)">Download SVG</button>
-                `;
-                grid.appendChild(card);
+                addCard(traitCategory, traitName || `Trait ${idx}`, formattedSvg, cat, idx);
+              } else {
+                emptyInRow++;
               }
-            } catch (e) {
-              console.log(`Cat ${cat} Index ${idx} fetch ended:`, e.message);
-              break; // End of this category index
+            } else {
+              emptyInRow++;
             }
+
+            // Stop checking this category if 3 consecutive indexes return empty/error
+            if (emptyInRow >= 3 && idx > 0) break;
           }
         }
 
-        status.innerText = totalLayers > 0 ? `Done! Loaded ${totalLayers} layers.` : "No layers found. Check RPC URL/Network!";
+        status.innerText = totalLayers > 0 
+          ? `Success! Fetched ${totalLayers} layers.` 
+          : "No layers found with standard interfaces. Check browser console (F12) for details.";
+
       } catch (err) {
         console.error(err);
-        status.innerText = "Error: " + err.message;
+        status.innerText = "Connection Error: " + (err.reason || err.message);
       }
     }
 
-    function download(name, encodedSvg) {
+    function addCard(category, name, svg, catIdx, traitIdx) {
+      const grid = document.getElementById('grid');
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="svg-container">${svg}</div>
+        <strong style="font-size: 11px; color: #38bdf8; text-transform: uppercase;">${category}</strong>
+        <span style="font-size: 14px; font-weight: bold; margin-top: 4px; text-align: center;">${name}</span>
+        <button class="dl-btn" onclick="download('${catIdx}_${traitIdx}_${name}', \`${encodeURIComponent(svg)}\`)">Download SVG</button>
+      `;
+      grid.appendChild(card);
+    }
+
+    function download(filename, encodedSvg) {
       const blob = new Blob([decodeURIComponent(encodedSvg)], { type: "image/svg+xml" });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
-      a.download = `${name}.svg`;
+      a.download = `${filename}.svg`;
       a.click();
     }
   </script>

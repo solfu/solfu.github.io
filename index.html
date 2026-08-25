@@ -18,7 +18,7 @@
     .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
     .svg-container { width: 140px; height: 140px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 10px; border: 1px dashed #334155; }
     .svg-container svg { width: 100%; height: 100%; object-fit: contain; }
-    .dl-btn { background: #10b981; margin-top: 10px; width: 100%; }
+    .dl-btn { background: #10b981; margin-top: 10px; width: 100%; color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -26,8 +26,8 @@
     <h1>ETH On-Chain Layer Downloader</h1>
     
     <div class="form-box">
-      <input type="text" id="rpcUrl" placeholder="ETH Mainnet RPC (Alchemy/Infura/Public)" />
-      <input type="text" id="contractAddress" placeholder="Diamond Contract Address (0x...)" />
+      <input type="text" id="rpcUrl" placeholder="ETH Mainnet RPC URL" />
+      <input type="text" id="contractAddress" placeholder="Contract Address (0x312...)" />
       <button onclick="fetchLayers()">Fetch Layers</button>
     </div>
 
@@ -36,12 +36,10 @@
   </div>
 
   <script>
-    // Multiple ABI signatures to support various Diamond / On-Chain architectures
+    // Exact struct definition for diamond facets / custom token storage
     const abi = [
-      "function traitTypes(uint256, uint256) view returns (string traitName, string traitType, string pixels)",
-      "function getTraitDetails(uint256, uint256) view returns (string name, string category, string svgData)",
-      "function traitDetails(uint256, uint256) view returns (string, string, string)",
-      "function getTrait(uint256, uint256) view returns (string, string)"
+      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
+      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, bytes pixels))"
     ];
 
     async function fetchLayers() {
@@ -51,83 +49,69 @@
       const grid = document.getElementById('grid');
 
       grid.innerHTML = "";
-      if (!rpc || !addr) return alert("RPC URL and Address are required!");
+      if (!rpc || !addr) return alert("RPC URL and Address required!");
 
-      status.innerText = "Connecting to ETH Mainnet Contract...";
+      status.innerText = "Connecting to ETH Mainnet...";
 
       try {
         const provider = new ethers.JsonRpcProvider(rpc);
         const contract = new ethers.Contract(addr, abi, provider);
 
-        let totalLayers = 0;
+        let totalLoaded = 0;
 
-        // Loop through Categories
-        for (let cat = 0; cat < 12; cat++) {
-          let emptyInRow = 0;
+        for (let categoryIdx = 0; categoryIdx < 15; categoryIdx++) {
+          let hasItemsInCat = false;
 
-          // Loop through Indexes
-          for (let idx = 0; idx < 40; idx++) {
-            status.innerText = `Scanning Category: ${cat} | Trait Index: ${idx}...`;
-            
-            let res = null;
-            let traitName = "";
-            let traitCategory = "";
-            let svgData = "";
+          for (let traitIdx = 0; traitIdx < 50; traitIdx++) {
+            status.innerText = `Scanning Category [${categoryIdx}] - Trait [${traitIdx}]...`;
 
-            // Try primary method
             try {
-              res = await contract.traitTypes(cat, idx);
-            } catch (e1) {
-              try {
-                res = await contract.getTraitDetails(cat, idx);
-              } catch (e2) {
-                try {
-                  res = await contract.traitDetails(cat, idx);
-                } catch (e3) {
-                  // Revert means no item at this index
+              const res = await contract.traitTypes(categoryIdx, traitIdx);
+
+              if (res) {
+                const name = res.traitName || res[0] || "";
+                const type = res.traitType || res[1] || `Cat ${categoryIdx}`;
+                let rawPixels = res.pixels || res[2] || "";
+
+                if (Array.isArray(rawPixels)) {
+                  rawPixels = rawPixels.join("");
                 }
+
+                if (!name && !rawPixels) continue;
+
+                hasItemsInCat = true;
+                totalLoaded++;
+
+                // Build SVG markup if not already enclosed
+                let formattedSvg = "";
+                if (typeof rawPixels === 'string' && rawPixels.includes("<svg")) {
+                  formattedSvg = rawPixels;
+                } else {
+                  formattedSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawPixels}</svg>`;
+                }
+
+                addCard(type, name || `Trait ${traitIdx}`, formattedSvg, categoryIdx, traitIdx);
               }
+            } catch (err) {
+              // If index out of bounds, step out of this category iteration
+              break;
             }
-
-            if (res) {
-              traitName = res[0] || res.traitName || res.name || "";
-              traitCategory = res[1] || res.traitType || res.category || `Category ${cat}`;
-              svgData = res[2] || res.pixels || res.svgData || "";
-
-              if (traitName || svgData) {
-                emptyInRow = 0;
-                totalLayers++;
-
-                let formattedSvg = svgData.includes("<svg") 
-                  ? svgData 
-                  : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${svgData}</svg>`;
-
-                addCard(traitCategory, traitName || `Trait ${idx}`, formattedSvg, cat, idx);
-              } else {
-                emptyInRow++;
-              }
-            } else {
-              emptyInRow++;
-            }
-
-            // Stop checking this category if 3 consecutive indexes return empty/error
-            if (emptyInRow >= 3 && idx > 0) break;
           }
         }
 
-        status.innerText = totalLayers > 0 
-          ? `Success! Fetched ${totalLayers} layers.` 
-          : "No layers found with standard interfaces. Check browser console (F12) for details.";
+        status.innerText = totalLoaded > 0 
+          ? `Success! Loaded ${totalLoaded} layers.` 
+          : "No layers found. Check if the RPC key has active rate-limits or if Etherscan verified ABI differs.";
 
       } catch (err) {
         console.error(err);
-        status.innerText = "Connection Error: " + (err.reason || err.message);
+        status.innerText = "Error: " + (err.reason || err.message);
       }
     }
 
     function addCard(category, name, svg, catIdx, traitIdx) {
       const grid = document.getElementById('grid');
-      const card = document.createElement('div');
+      card = document.createElement('div');
       card.className = 'card';
       card.innerHTML = `
         <div class="svg-container">${svg}</div>

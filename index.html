@@ -3,264 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>On-Chain NFT Layer Downloader & Viewer</title>
-  <!-- Ethers.js CDN (v6) -->
+  <title>On-Chain NFT Layer Downloader</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    body {
-      background-color: #0f172a;
-      color: #f8fafc;
-      padding: 20px;
-    }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-      color: #38bdf8;
-    }
-    p.subtitle {
-      text-align: center;
-      color: #94a3b8;
-      margin-bottom: 25px;
-    }
-    .form-box {
-      background: #1e293b;
-      padding: 20px;
-      border-radius: 12px;
-      display: grid;
-      grid-template-columns: 1fr 1fr auto;
-      gap: 15px;
-      align-items: center;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-      margin-bottom: 30px;
-    }
-    input {
-      background: #0f172a;
-      border: 1px solid #334155;
-      color: #fff;
-      padding: 12px 15px;
-      border-radius: 8px;
-      font-size: 14px;
-      outline: none;
-    }
-    input:focus {
-      border-color: #38bdf8;
-    }
-    button {
-      background: #0284c7;
-      color: #fff;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    button:hover {
-      background: #0369a1;
-    }
-    .status {
-      text-align: center;
-      font-size: 16px;
-      color: #38bdf8;
-      margin-bottom: 20px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: #1e293b;
-      border: 1px solid #334155;
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      transition: transform 0.2s;
-    }
-    .card:hover {
-      transform: translateY(-5px);
-      border-color: #38bdf8;
-    }
-    .svg-preview {
-      width: 150px;
-      height: 150px;
-      background: #0f172a;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 15px;
-      border: 1px dashed #475569;
-      overflow: hidden;
-    }
-    .svg-preview svg {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-    }
-    .trait-type {
-      font-size: 12px;
-      color: #38bdf8;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 4px;
-    }
-    .trait-name {
-      font-size: 16px;
-      font-weight: bold;
-      margin-bottom: 12px;
-      text-align: center;
-    }
-    .download-btn {
-      background: #10b981;
-      width: 100%;
-      font-size: 13px;
-      padding: 8px 0;
-    }
-    .download-btn:hover {
-      background: #059669;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { text-align: center; color: #38bdf8; margin-bottom: 20px; }
+    .form-box { background: #1e293b; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+    input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 8px; font-size: 14px; }
+    button { background: #0284c7; color: #fff; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    .status { text-align: center; color: #38bdf8; margin: 15px 0; word-break: break-all; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+    .card { background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 15px; display: flex; flex-direction: column; align-items: center; }
+    .svg-container { width: 140px; height: 140px; background: #0f172a; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 10px; }
+    .svg-container svg { width: 100%; height: 100%; object-fit: contain; }
+    .dl-btn { background: #10b981; margin-top: 10px; width: 100%; }
   </style>
 </head>
 <body>
-
   <div class="container">
-    <h1>On-Chain NFT Layer Downloader</h1>
-    <p class="subtitle">Fetch and download individual traits/layers directly from your Diamond Smart Contract</p>
-
+    <h1>On-Chain Layer Downloader</h1>
+    
     <div class="form-box">
-      <input type="text" id="rpcUrl" placeholder="Enter RPC URL (e.g., https://...)" />
+      <input type="text" id="rpcUrl" placeholder="Enter RPC URL (e.g. Robinhood / ETH RPC)" />
       <input type="text" id="contractAddress" placeholder="Enter Diamond Contract Address (0x...)" />
       <button onclick="fetchLayers()">Fetch Layers</button>
     </div>
 
     <div class="status" id="status"></div>
-    <div class="grid" id="layerGrid"></div>
+    <div class="grid" id="grid"></div>
   </div>
 
   <script>
-    // ICustomToken & LibAppStorage ABI
-    const contractABI = [
-      "function traitTypes(uint256 _traitTypeIndex, uint256 _index) view returns (string traitName, string traitType, string[] pixels, uint256[] pixelCount)"
+    // ICustomToken Dynamic ABI
+    const abi = [
+      "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))"
     ];
 
     async function fetchLayers() {
-      const rpcUrl = document.getElementById('rpcUrl').value.trim();
-      const contractAddress = document.getElementById('contractAddress').value.trim();
+      const rpc = document.getElementById('rpcUrl').value.trim();
+      const addr = document.getElementById('contractAddress').value.trim();
       const status = document.getElementById('status');
-      const grid = document.getElementById('layerGrid');
-
-      if (!rpcUrl || !contractAddress) {
-        alert("Please enter both RPC URL and Contract Address!");
-        return;
-      }
+      const grid = document.getElementById('grid');
 
       grid.innerHTML = "";
-      status.innerText = "Connecting to blockchain and fetching layers...";
+      if (!rpc || !addr) return alert("RPC URL এবং Contract Address দিন");
+
+      status.innerText = "Connecting to contract...";
 
       try {
-        const provider = new ethers.JsonRpcProvider(rpcUrl);
-        const contract = new ethers.Contract(contractAddress, contractABI, provider);
+        const provider = new ethers.JsonRpcProvider(rpc);
+        const contract = new ethers.Contract(addr, abi, provider);
 
-        let traitTypeIndex = 0;
-        let totalFound = 0;
-
-        while (true) {
-          let layerIndex = 0;
-          let foundInCategory = false;
-
-          while (true) {
+        let totalLayers = 0;
+        
+        // Loop through Categories (0 to 10)
+        for (let cat = 0; cat < 15; cat++) {
+          let foundInCat = false;
+          
+          // Loop through Traits in Category (0 to 50)
+          for (let idx = 0; idx < 50; idx++) {
             try {
-              // Read layer data from smart contract
-              const trait = await contract.traitTypes(traitTypeIndex, layerIndex);
+              status.innerText = `Checking Category ${cat}, Index ${idx}...`;
+              const trait = await contract.traitTypes(cat, idx);
 
-              if (trait && trait.traitName) {
-                foundInCategory = true;
-                totalFound++;
+              if (trait && (trait.traitName || trait[0])) {
+                const name = trait.traitName || trait[0];
+                const type = trait.traitType || trait[1];
+                const pixels = trait.pixels || trait[2];
 
-                status.innerText = `Fetching: Category ${traitTypeIndex} | Layer ${layerIndex} (${trait.traitName})...`;
+                if (!name && pixels.length === 0) break;
 
-                // Render SVG preview (constructing SVG from pixels string)
-                let svgContent = "";
-                if (trait.pixels && trait.pixels.length > 0) {
-                  // If pixels contain complete SVG strings or raw vector paths
-                  const rawPixels = trait.pixels.join("");
-                  if (rawPixels.includes("<svg")) {
-                    svgContent = rawPixels;
-                  } else {
-                    svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawPixels}</svg>`;
-                  }
-                } else {
-                  svgContent = `<span style="color:#64748b; font-size:12px;">No SVG Preview</span>`;
-                }
+                foundInCat = true;
+                totalLayers++;
 
-                // Append card to grid
-                createLayerCard(trait.traitType, trait.traitName, svgContent, traitTypeIndex, layerIndex);
-                layerIndex++;
-              } else {
-                break;
+                let rawSvg = pixels.join("");
+                let svgContent = rawSvg.includes("<svg") ? rawSvg : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">${rawSvg}</svg>`;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                  <div class="svg-container">${svgContent}</div>
+                  <strong style="font-size: 12px; color: #38bdf8;">${type || 'Cat ' + cat}</strong>
+                  <span style="font-size: 14px; font-weight: bold; margin-top: 4px;">${name || 'Layer ' + idx}</span>
+                  <button class="dl-btn" onclick="download('${cat}_${idx}_${name}', \`${encodeURIComponent(svgContent)}\`)">Download SVG</button>
+                `;
+                grid.appendChild(card);
               }
-            } catch (err) {
-              break; // No more layers in this index
+            } catch (e) {
+              console.log(`Cat ${cat} Index ${idx} fetch ended:`, e.message);
+              break; // End of this category index
             }
           }
-
-          if (!foundInCategory && layerIndex === 0) {
-            break; // No more categories left
-          }
-
-          traitTypeIndex++;
         }
 
-        if (totalFound === 0) {
-          status.innerText = "No layers found in this contract or incorrect address/RPC.";
-        } else {
-          status.innerText = `Successfully loaded ${totalFound} individual layers!`;
-        }
-
-      } catch (error) {
-        console.error(error);
-        status.innerText = "Error fetching data! Check console or verify contract address.";
+        status.innerText = totalLayers > 0 ? `Done! Loaded ${totalLayers} layers.` : "No layers found. Check RPC URL/Network!";
+      } catch (err) {
+        console.error(err);
+        status.innerText = "Error: " + err.message;
       }
     }
 
-    function createLayerCard(type, name, svgHtml, catIdx, layerIdx) {
-      const grid = document.getElementById('layerGrid');
-      const card = document.createElement('div');
-      card.className = 'card';
-
-      card.innerHTML = `
-        <div class="svg-preview">${svgHtml}</div>
-        <div class="trait-type">${type || `Category ${catIdx}`}</div>
-        <div class="trait-name">${name}</div>
-        <button class="download-btn" onclick="downloadSVG('${catIdx}_${layerIdx}_${name}', \`${encodeURIComponent(svgHtml)}\`)">Download SVG</button>
-      `;
-
-      grid.appendChild(card);
-    }
-
-    function downloadSVG(filename, encodedSvg) {
-      const svgData = decodeURIComponent(encodedSvg);
-      const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `${filename}.svg`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+    function download(name, encodedSvg) {
+      const blob = new Blob([decodeURIComponent(encodedSvg)], { type: "image/svg+xml" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}.svg`;
+      a.click();
     }
   </script>
 </body>

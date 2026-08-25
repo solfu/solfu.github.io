@@ -2,140 +2,126 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>On-Chain Diamond NFT Tool & Layer Extractor</title>
+<title>On-Chain Raw Layer Extractor & NFT Generator</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
-  body { font-family: monospace; background: #0f172a; color: #f8fafc; padding: 20px; }
-  .container { max-width: 900px; margin: 0 auto; }
-  .box { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
-  h2 { margin-top: 0; color: #38bdf8; }
-  input, button { width: 100%; padding: 10px; margin-top: 8px; border-radius: 4px; border: 1px solid #475569; background: #0f172a; color: #fff; box-sizing: border-box; }
-  button { background: #0284c7; cursor: pointer; font-weight: bold; border: none; }
-  button:hover { background: #0369a1; }
-  .flex { display: flex; gap: 10px; }
-  .flex input { flex: 1; }
-  #log { background: #000; padding: 10px; border-radius: 4px; height: 150px; overflow-y: auto; font-size: 12px; color: #4ade80; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; margin-top: 10px; }
-  .nft-item { border: 1px solid #475569; padding: 5px; border-radius: 4px; text-align: center; }
-  .nft-item svg { width: 100%; height: auto; }
+  body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; }
+  .box { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+  input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
+  button { background: #007acc; cursor: pointer; font-weight: bold; }
+  button:hover { background: #005999; }
+  #log { background: #000; padding: 10px; font-family: monospace; height: 150px; overflow-y: auto; border: 1px solid #333; color: #00ff00; }
+  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+  .layer-card { border: 1px solid #444; padding: 5px; text-align: center; border-radius: 4px; background: #252525; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h2>💎 On-Chain Diamond NFT Explorer & Generator</h2>
-
+  <h2>🎨 Raw On-Chain Trait/Layer Extractor</h2>
+  
   <div class="box">
-    <h3>1. Network Connection</h3>
-    <input id="rpcUrl" placeholder="RPC URL (e.g. https://eth-mainnet.g.alchemy.com/v2/...)" value="https://rpc.ankr.com/eth">
-    <input id="contractAddr" placeholder="Diamond Contract Address (0x...)" value="">
+    <h3>1. Network & Contract Setup</h3>
+    <input id="rpcUrl" placeholder="RPC URL (e.g. https://rpc.ankr.com/eth)" value="https://rpc.ankr.com/eth">
+    <input id="contractAddr" placeholder="Diamond Contract Address (0x...)">
   </div>
 
   <div class="box">
-    <h3>2. Fetch & Render On-Chain SVG</h3>
-    <div class="flex">
-      <input id="tokenId" type="number" placeholder="Token ID" value="1">
-      <button onclick="fetchSvg()">Fetch SVG</button>
-    </div>
-    <div id="svgContainer" style="margin-top: 15px; text-align: center;"></div>
+    <h3>2. Raw Layers Extractor (No Token ID Needed)</h3>
+    <button onclick="extractAllLayers()">Extract & Download All Layers (.ZIP)</button>
   </div>
 
   <div class="box">
-    <h3>3. Generate & Download Layers / New NFTs</h3>
-    <div class="flex">
-      <input id="genCount" type="number" placeholder="Total NFTs to Generate" value="5">
-      <button onclick="generateBatch()">Generate & Zip Assets</button>
-    </div>
+    <h3>3. Console Logs</h3>
+    <div id="log">Ready to extract raw layers...<br></div>
   </div>
 
   <div class="box">
-    <h3>Console Log</h3>
-    <div id="log">Ready...<br></div>
+    <h3>Extracted Layers Preview</h3>
+    <div id="preview" class="layer-grid"></div>
   </div>
-</div>
 
 <script>
-  // Minimal Diamond ABI for Trait and SVG interactions based on Diamond/ICustomToken contract
-  const DIAMOND_ABI = [
-    "function hashToSVG(string memory _hash) external view returns (string memory)",
-    "function hashToMetadata(string memory _hash, uint256 _tokenId) external view returns (string memory)",
-    "function tokenURI(uint256 tokenId) external view returns (string memory)"
+  // ABI matching LibAppStorage Trait Struct & Facet Read Functions
+  const CONTRACT_ABI = [
+    "function getTrait(uint256 _traitTypeIndex, uint256 _traitIndex) external view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
+    "function getTraitAmount(uint256 _traitTypeIndex) external view returns (uint256)"
   ];
 
   function log(msg) {
-    const el = document.getElementById('log');
-    el.innerHTML += `> ${msg}<br>`;
-    el.scrollTop = el.scrollHeight;
+    const l = document.getElementById('log');
+    l.innerHTML += `> ${msg}<br>`;
+    l.scrollTop = l.scrollHeight;
   }
 
-  function getProvider() {
-    const rpc = document.getElementById('rpcUrl').value;
-    return new ethers.providers.JsonRpcProvider(rpc);
-  }
-
-  function getContract() {
-    const addr = document.getElementById('contractAddr').value;
-    if (!addr) throw new Error("Contract address is required!");
-    return new ethers.Contract(addr, DIAMOND_ABI, getProvider());
-  }
-
-  async function fetchSvg() {
-    try {
-      const tokenId = document.getElementById('tokenId').value;
-      const contract = getContract();
-      log(`Fetching Token #${tokenId}...`);
-
-      const uri = await contract.tokenURI(tokenId);
-      let svgData = "";
-
-      if (uri.startsWith("data:application/json;base64,")) {
-        const jsonStr = atob(uri.replace("data:application/json;base64,", ""));
-        const meta = JSON.parse(jsonStr);
-        svgData = meta.image.startsWith("data:image/svg+xml;base64,") 
-          ? atob(meta.image.replace("data:image/svg+xml;base64,", "")) 
-          : meta.image;
-      } else {
-        svgData = uri;
+  // Raw Pixel Data to SVG Renderer Function
+  function buildSvgFromPixels(pixels, pixelCount) {
+    let rects = "";
+    let ptr = 0;
+    for (let i = 0; i < pixelCount.length; i++) {
+      const count = pixelCount[i];
+      const color = pixels[i];
+      for (let j = 0; j < count; j++) {
+        const x = ptr % 32; // Assuming standard 32x32 pixel grid
+        const y = Math.floor(ptr / 32);
+        rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" />`;
+        ptr++;
       }
-
-      document.getElementById('svgContainer').innerHTML = svgData;
-      log(`Token #${tokenId} SVG successfully rendered!`);
-    } catch (e) {
-      log(`Error: ${e.message}`);
     }
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">${rects}</svg>`;
   }
 
-  async function generateBatch() {
+  async function extractAllLayers() {
     try {
-      const count = parseInt(document.getElementById('genCount').value);
+      const rpc = document.getElementById('rpcUrl').value;
+      const addr = document.getElementById('contractAddr').value;
+      if (!addr) return alert("Contract address is required!");
+
+      const provider = new ethers.providers.JsonRpcProvider(rpc);
+      const contract = new ethers.Contract(addr, CONTRACT_ABI, provider);
+
       const zip = new JSZip();
-      const imgFolder = zip.folder("svg_layers");
-      const metaFolder = zip.folder("metadata");
+      log("Connecting to Contract...");
 
-      log(`Generating ${count} NFT assets...`);
+      // Assuming up to 10 Trait Categories (e.g. Background, Eyes, Hats etc.)
+      for (let typeIdx = 0; typeIdx < 10; typeIdx++) {
+        try {
+          const totalInType = await contract.getTraitAmount(typeIdx);
+          if (totalInType == 0) continue;
 
-      for (let i = 1; i <= count; i++) {
-        // Mock SVG generation for layer export workflow
-        const dummySvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="300" height="300"><rect width="24" height="24" fill="#${Math.floor(Math.random()*16777215).toString(16)}"/><text x="2" y="12" fill="#fff" font-size="3">ID #${i}</text></svg>`;
-        const dummyMeta = {
-          name: `On-Chain Diamond NFT #${i}`,
-          description: "Generated from EIP-2535 Diamond Storage",
-          image: `${i}.svg`,
-          attributes: [{ trait_type: "Generation", value: "Layer Batch" }]
-        };
+          log(`Found Category Index ${typeIdx}: ${totalInType} traits`);
 
-        imgFolder.file(`${i}.svg`, dummySvg);
-        metaFolder.file(`${i}.json`, JSON.stringify(dummyMeta, null, 2));
+          for (let traitIdx = 0; traitIdx < totalInType; traitIdx++) {
+            const trait = await contract.getTrait(typeIdx, traitIdx);
+            
+            // Generate Raw SVG string from structural pixel data
+            const svgContent = buildSvgFromPixels(trait.pixels, trait.pixelCount);
+            
+            const folderName = trait.traitType || `Category_${typeIdx}`;
+            const fileName = `${trait.traitName || `Trait_${traitIdx}`}.svg`;
+
+            // Add SVG File to ZIP under Category Folder
+            zip.folder(folderName).file(fileName, svgContent);
+
+            // Append Preview Card
+            const previewEl = document.getElementById('preview');
+            const card = document.createElement('div');
+            card.className = 'layer-card';
+            card.innerHTML = `${svgContent}<small>${folderName}/<br>${trait.traitName}</small>`;
+            previewEl.appendChild(card);
+          }
+        } catch (e) {
+          // Break when non-existent trait category is reached
+          break;
+        }
       }
 
-      log("Compressing files into ZIP...");
+      log("Compressing layers into ZIP...");
       const content = await zip.generateAsync({ type: "blob" });
-      saveAs(content, "OnChain_NFT_Layers.zip");
-      log("Download initiated successfully!");
-    } catch (e) {
-      log(`Error: ${e.message}`);
+      saveAs(content, "OnChain_Raw_Layers.zip");
+      log("Layers successfully downloaded!");
+    } catch (err) {
+      log(`Error: ${err.message}`);
     }
   }
 </script>

@@ -1,676 +1,189 @@
 <!DOCTYPE html>
-<html lang="en" class="h-full">
+<html lang="bn">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Risograph NFT Gallery | CryptoDickbutts</title>
-  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
-  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <title>On-Chain NFT Contract & Layer Downloader</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Ethers.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <!-- JSZip for Downloading Files -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="/_sdk/element_sdk.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #0a0a12; }
-    .mono { font-family: 'Space Mono', monospace; }
-    
-    .riso-effect {
-      position: relative;
-    }
-    .riso-effect::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: repeating-linear-gradient(45deg, rgba(255,80,90,0.12) 0px, rgba(255,80,90,0.12) 2px, transparent 2px, transparent 6px),
-                  repeating-linear-gradient(135deg, rgba(0,140,255,0.08) 0px, rgba(0,140,255,0.08) 3px, transparent 3px, transparent 8px);
-      pointer-events: none;
-      mix-blend-mode: overlay;
-      border-radius: inherit;
-    }
-    
-    .grain-overlay {
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
-      pointer-events: none;
-      z-index: 10;
-    }
-    
-    .card {
-      transition: all 0.3s cubic-bezier(0.2, 0.9, 0.4, 1.1);
-    }
-    .card:hover {
-      transform: translateY(-6px);
-    }
-    
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(25px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .animate-in {
-      animation: fadeInUp 0.4s ease forwards;
-    }
-    
-    .modal-open {
-      animation: modalFade 0.2s ease;
-    }
-    
-    @keyframes modalFade {
-      from { opacity: 0; transform: scale(0.96); }
-      to { opacity: 1; transform: scale(1); }
-    }
-    
-    .image-toggle-btn {
-      background: rgba(0,0,0,0.6);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(255,255,255,0.2);
-      transition: all 0.2s;
-    }
-    .image-toggle-btn:hover {
-      background: #ff5a5f;
-      border-color: white;
-    }
-    
-    .scrollbar-custom::-webkit-scrollbar { width: 5px; }
-    .scrollbar-custom::-webkit-scrollbar-track { background: #1a1a2a; }
-    .scrollbar-custom::-webkit-scrollbar-thumb { background: #ff5a5f; border-radius: 10px; }
-    
-    .download-btn {
-      background: linear-gradient(135deg, #ff5a5f, #ff2a2f);
-      transition: all 0.2s ease;
-      position: relative;
-      overflow: hidden;
-    }
-    .download-btn:hover {
-      transform: scale(1.02);
-      box-shadow: 0 0 10px rgba(255,90,95,0.5);
-    }
-    .download-btn:active {
-      transform: scale(0.98);
-    }
-    
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-  </style>
+  <!-- FileSaver CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
-<body class="scrollbar-custom overflow-x-hidden">
-  <div class="fixed inset-0 grain-overlay pointer-events-none z-0"></div>
-  
-  <div id="app" class="relative z-10 min-h-screen">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+
+  <div class="max-w-4xl mx-auto space-y-6">
     <!-- Header -->
-    <header class="sticky top-0 z-30 backdrop-blur-xl bg-[#0a0a12]/90 border-b border-white/10">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center gap-3">
-          <div class="w-1 h-6 bg-[#ff5a5f] rounded-full"></div>
-          <div>
-            <h1 id="main-title" class="mono text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#ff6a6f] to-[#ff5a5f] bg-clip-text text-transparent">RISOGRAPH NFT</h1>
-            <p id="subtitle" class="text-xs text-gray-400">CryptoDickbutts · Series 3</p>
-          </div>
-        </div>
-        
-        <div class="flex items-center gap-3">
-          <!-- DOWNLOAD AS ZIP BUTTON -->
-          <button id="download-metadata-btn" class="download-btn flex items-center gap-2 px-4 py-2 rounded-full text-white text-sm font-bold mono shadow-lg">
-            <i data-lucide="archive" class="w-4 h-4"></i>
-            <span>📦 ZIP (1-5360.json)</span>
-          </button>
-          
-          <!-- Pagination -->
-          <div class="flex items-center bg-[#16162a] rounded-full border border-[#ff5a5f]/30 overflow-hidden">
-            <button id="prev-btn" class="px-3 py-2 hover:bg-[#ff5a5f]/20 transition text-[#ff8a8f]"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-            <div class="flex items-center gap-1 px-2 mono text-sm">
-              <span class="text-gray-400">pg</span>
-              <input id="page-input" type="number" min="1" max="268" value="1" class="w-12 bg-transparent text-center text-[#ff5a5f] font-bold outline-none">
-              <span class="text-gray-400">/<span id="total-pages">268</span></span>
-            </div>
-            <button id="next-btn" class="px-3 py-2 hover:bg-[#ff5a5f]/20 transition"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-          </div>
-          
-          <!-- Direct ID jump -->
-          <input id="search-input" type="number" placeholder="ID #" min="1" max="5360" 
-                 class="w-28 bg-[#16162a] border border-[#2a2a4a] rounded-full px-4 py-2 text-sm outline-none focus:border-[#ff5a5f] transition text-white placeholder:text-gray-500 mono">
-        </div>
-      </div>
+    <header class="text-center py-4 border-b border-slate-700">
+      <h1 class="text-3xl font-bold text-emerald-400">On-Chain NFT Downloader</h1>
+      <p class="text-slate-400 mt-2">Alchemy API ব্যবহার করে কন্ট্রাক্ট সোর্স কোড ও অনচেন লেয়ার ডাউনলোড করুন</p>
     </header>
 
-    <!-- Gallery Grid -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-      <div id="grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-5"></div>
-      <div id="loading" class="hidden flex flex-col items-center justify-center py-20 gap-3">
-        <div class="w-10 h-10 border-3 border-[#ff5a5f]/30 border-t-[#ff5a5f] rounded-full animate-spin"></div>
-        <p class="mono text-sm text-gray-400">fetching riso prints...</p>
+    <!-- Form Section -->
+    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 shadow-lg">
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Alchemy API Key / RPC URL</label>
+        <input id="apiKey" type="text" placeholder="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY" 
+               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm">
       </div>
-    </main>
 
-    <!-- Modal -->
-    <div id="modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" id="modal-backdrop"></div>
-      <div class="relative bg-[#12121f] rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-auto border border-white/20 modal-open">
-        <div class="relative group">
-          <div id="modal-img-wrapper" class="relative overflow-hidden bg-[#0a0a12] rounded-t-2xl">
-            <img id="modal-img" class="w-full aspect-square object-cover" alt="NFT">
-          </div>
-          <button id="toggle-original" class="absolute bottom-4 right-4 z-20 image-toggle-btn rounded-full px-4 py-2 text-xs font-bold flex items-center gap-2 shadow-lg">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
-            <span id="toggle-text" class="mono">RISO MODE</span>
-          </button>
-          <button id="modal-close" class="absolute top-4 right-4 z-20 bg-black/50 backdrop-blur rounded-full p-2 hover:bg-[#ff5a5f] transition border border-white/20">
-            <i data-lucide="x" class="w-4 h-4"></i>
-          </button>
-        </div>
-        
-        <div class="p-5">
-          <h2 id="modal-title" class="mono text-xl font-bold text-[#ff5a5f] mb-4"></h2>
-          <div id="modal-traits" class="grid grid-cols-2 gap-2"></div>
-          <div class="mt-4 pt-3 border-t border-white/10 text-right">
-            <span class="text-[10px] text-gray-500 mono">✦ risograph spectral edition</span>
-          </div>
-        </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">Etherscan API Key (সোর্স কোড ডাউনলোডের জন্য)</label>
+        <input id="etherscanKey" type="text" placeholder="Your Etherscan API Key" 
+               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm">
       </div>
+
+      <div>
+        <label class="block text-sm font-medium text-slate-300 mb-1">NFT Contract Address</label>
+        <input id="contractAddress" type="text" value="0x312BE6a98441F9F6e3F6246B13CA19701e0AC3B9" 
+               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+      </div>
+
+      <div class="flex gap-4 pt-2">
+        <button onclick="fetchContractSource()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 font-semibold py-2 px-4 rounded-lg transition">
+          1. সোর্স কোড ডাউনলোড
+        </button>
+        <button onclick="fetchOnChainLayers()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 font-semibold py-2 px-4 rounded-lg transition">
+          2. অনচেন লেয়ার/মেটাডেটা ডাউনলোড
+        </button>
+      </div>
+    </div>
+
+    <!-- Status / Console Log -->
+    <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-2">
+      <h2 class="text-lg font-semibold text-slate-200">স্ট্যাটাস ও আউটপুট Logs Log</h2>
+      <pre id="logConsole" class="bg-slate-950 p-4 rounded-lg text-emerald-400 text-xs font-mono h-48 overflow-y-auto whitespace-pre-wrap">ওয়েবসাইট রেডি... API কী দিন এবং ডাউনলোড শুরু করুন।</pre>
     </div>
   </div>
 
   <script>
-    // ======================== CONFIGURATION ========================
-    const IPFS_GATEWAY = 'https://ipfs.io/ipfs/';
-    const PER_PAGE = 20;
-    const TOTAL_NFTS = 5360;
-    const TOTAL_PAGES = Math.ceil(TOTAL_NFTS / PER_PAGE);
-    const CONCURRENT_LIMIT = 30;
-    
-    // CID mapping with folder structure - প্রতিটি CID তে ৫০০ করে NFT
-    const CID_RANGES = [
-      { start: 160, end: 499, cid: 'QmcENAp91phXWRT7JpEpAasVve4oCsYbev56HNHD2BgLjE', folder: '0' },
-      { start: 500, end: 999, cid: 'QmfUxUc1iu2RQSm1AygUEtX7giPrrzhvhKToQ4biQcimLf', folder: '1' },
-      { start: 1000, end: 1499, cid: 'Qmeo1JdaA4hufbKneRQVNYQS5BJGGziBr4k14gzHeCgb9L', folder: '2' },
-      { start: 1500, end: 1999, cid: 'QmUQu8Q66QYW2pn77oojimEQhvjH8tCs1jMbDHj43tcCFu', folder: '3' },
-      { start: 2000, end: 2499, cid: 'Qmd8YGp9yUKtXas1cT3UsYFpWwfWHvV4Bssj8Pbvrq6BZ5', folder: '4' },
-      { start: 2500, end: 2999, cid: 'QmfWsA2JKaDE3ipd8FdLHsayGQ6PQ4wVAfCK4PEb1ykUif', folder: '5' },
-      { start: 3000, end: 3499, cid: 'QmdDkgz1a85LaJZxEr6awGCaf2CpZBMWc9eQ1ezEh8sqJW', folder: '6' },
-      { start: 3500, end: 3999, cid: 'QmaduZqVgbqtJAoW7eyejNSLVsqXVeaRPC5HkG1SeGCyut', folder: '7' },
-      { start: 4000, end: 4499, cid: 'QmQLmSXT5zY6XcNrdwhX8GbGc9QrbEhbwvEmjggRBxKeib', folder: '8' },
-      { start: 4500, end: 4999, cid: 'QmTLx6G5hUDCoV8aBbXLuuV1kaUwd6KiSrARUJUHLGhEcP', folder: '9' },
-      { start: 5001, end: 5360, cid: 'QmZodri3bfsGebBBBjeBAJLztq6DmQLDqiXi4LhEeU2QCS', folder: '10' }
-    ];
-    
-    let currentPage = 1;
-    let currentModalState = { isRiso: true, risoUrl: null, originalUrl: null, meta: null, id: null };
-    
-    // Caches
-    let metadataCache = {};
-    let risoCache = {};
-    
-    // Default config for SDK
-    const defaultConfig = {
-      gallery_title: 'RISOGRAPH NFT',
-      subtitle_text: 'CryptoDickbutts · Series 3',
-      background_color: '#0a0a12',
-      accent_color: '#ff5a5f',
-      surface_color: '#16162a',
-      text_color: '#ffffff',
-      muted_color: '#9ca3af',
-      font_family: 'Inter',
-      font_size: 16
-    };
-    
-    // ======================== UTILITIES ========================
-    function getCIDForId(id) {
-      for (const range of CID_RANGES) {
-        if (id >= range.start && id <= range.end) {
-          return range;
-        }
-      }
-      return null;
+    function log(message) {
+      const consoleEl = document.getElementById('logConsole');
+      consoleEl.innerText += `\n[${new Date().toLocaleTimeString()}] ${message}`;
+      consoleEl.scrollTop = consoleEl.scrollHeight;
     }
-    
-    function getMetadataUrl(id) {
-      const range = getCIDForId(id);
-      if (!range) return null;
-      
-      // Format: https://ipfs.io/ipfs/CID/folder/id.json
-      return `${IPFS_GATEWAY}${range.cid}/${range.folder}/${id}.json`;
-    }
-    
-    function getImageUrl(ipfsUri) {
-      if (!ipfsUri) return null;
-      
-      // If it's already HTTP
-      if (ipfsUri.startsWith('http://') || ipfsUri.startsWith('https://')) {
-        return ipfsUri;
+
+    // ১. স্মার্ট কন্ট্রাক্টের সোর্স কোড এবং ABI ডাউনলোড
+    async function fetchContractSource() {
+      const contract = document.getElementById('contractAddress').value.trim();
+      const etherscanKey = document.getElementById('etherscanKey').value.trim();
+
+      if (!etherscanKey) {
+        log("ত্রুটি: Etherscan API Key প্রদান করুন!");
+        return;
       }
-      
-      // Extract CID from ipfs://
-      if (ipfsUri.startsWith('ipfs://')) {
-        const cid = ipfsUri.replace('ipfs://', '');
-        return `${IPFS_GATEWAY}${cid}`;
-      }
-      
-      // If it's just a CID
-      if (ipfsUri.startsWith('Qm')) {
-        return `${IPFS_GATEWAY}${ipfsUri}`;
-      }
-      
-      return null;
-    }
-    
-    async function applyRisographEffect(imgSrc) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          
-          ctx.drawImage(img, 0, 0);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
-          
-          for (let i = 0; i < data.length; i += 4) {
-            let r = data[i];
-            let g = data[i+1];
-            let b = data[i+2];
-            
-            let gray = r * 0.3 + g * 0.59 + b * 0.11;
-            let contrast = 1.5;
-            let contrasted = (gray - 128) * contrast + 128;
-            contrasted = Math.min(255, Math.max(0, contrasted));
-            
-            let newR = contrasted * 1.15;
-            let newG = contrasted * 0.85;
-            let newB = contrasted * 0.9;
-            
-            data[i] = Math.min(255, newR);
-            data[i+1] = Math.min(255, newG);
-            data[i+2] = Math.min(255, newB);
-          }
-          
-          ctx.putImageData(imageData, 0, 0);
-          resolve(canvas.toDataURL('image/jpeg', 0.9));
-        };
-        img.onerror = () => resolve(imgSrc);
-        img.src = imgSrc;
-      });
-    }
-    
-    async function getRisoVersion(id, originalUrl) {
-      if (risoCache[id]) return risoCache[id];
+
+      log(`কন্ট্রাক্ট সোর্স কোড ফেচ করা হচ্ছে: ${contract}`);
+
       try {
-        const risoUrl = await applyRisographEffect(originalUrl);
-        risoCache[id] = risoUrl;
-        return risoUrl;
-      } catch (err) {
-        console.warn(`RISO effect failed for ${id}:`, err);
-        return originalUrl;
-      }
-    }
-    
-    async function fetchNFT(id) {
-      if (metadataCache[id]) return metadataCache[id];
-      
-      const url = getMetadataUrl(id);
-      if (!url) {
-        console.warn(`No CID range found for ID ${id}`);
-        return {
-          tokenId: id,
-          name: `#${id}`,
-          image: `https://placehold.co/600x600/1a1a2a/ff5a5f?text=${id}`,
-          attributes: [],
-          raw: null,
-          error: 'No CID range'
-        };
-      }
-      
-      try {
-        console.log(`📡 Fetching metadata: ${url}`);
-        
+        const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${contract}&apikey=${etherscanKey}`;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
         const data = await response.json();
-        console.log(`✅ NFT #${id} loaded:`, data.name);
-        
-        // Extract image URL from metadata
-        let imageUrl = null;
-        if (data.image) {
-          imageUrl = getImageUrl(data.image);
-          console.log(`🖼️ NFT #${id} image CID: ${data.image}`);
-          console.log(`🖼️ NFT #${id} image URL: ${imageUrl}`);
-        }
-        
-        // If no image found, use placeholder
-        if (!imageUrl) {
-          console.warn(`⚠️ No image for #${id}, using placeholder`);
-          imageUrl = `https://placehold.co/600x600/1a1a2a/ff5a5f?text=${id}`;
-        }
-        
-        const normalized = {
-          tokenId: id,
-          name: data.name || `CryptoDickbutt #${id}`,
-          description: data.description || '',
-          image: imageUrl,
-          attributes: Array.isArray(data.attributes) ? data.attributes : [],
-          raw: data
-        };
-        
-        metadataCache[id] = normalized;
-        return normalized;
-      } catch (err) {
-        console.warn(`❌ Failed #${id}:`, err);
-        return {
-          tokenId: id,
-          name: `#${id}`,
-          image: `https://placehold.co/600x600/1a1a2a/ff5a5f?text=${id}`,
-          attributes: [],
-          raw: null,
-          error: err.message
-        };
-      }
-    }
-    
-    // ================ DOWNLOAD ZIP ================
-    async function downloadAsZip() {
-      const total = TOTAL_NFTS;
-      
-      if (!confirm(`📦 Download ${total} JSON files as ZIP?\n\nThis will take ~30 seconds. Continue?`)) return;
-      
-      const overlay = document.createElement('div');
-      overlay.className = 'fixed inset-0 bg-black/95 z-50 flex flex-col items-center justify-center gap-4 backdrop-blur-md';
-      overlay.innerHTML = `
-        <div class="bg-[#16162a] rounded-2xl p-8 max-w-md w-full border-2 border-[#ff5a5f] shadow-2xl">
-          <div class="flex items-center justify-center mb-4">
-            <div class="relative">
-              <div class="w-16 h-16 border-4 border-[#ff5a5f]/30 border-t-[#ff5a5f] rounded-full animate-spin"></div>
-              <i data-lucide="archive" class="absolute inset-0 m-auto w-6 h-6 text-[#ff5a5f]"></i>
-            </div>
-          </div>
-          <p class="mono text-white font-bold text-lg text-center mb-2">📦 Creating ZIP Archive</p>
-          <p class="text-gray-400 text-sm text-center mb-4">Fetching ${total} NFTs...</p>
-          <div class="w-full bg-[#0a0a12] rounded-full h-3 overflow-hidden mb-3">
-            <div id="dl-bar" class="bg-gradient-to-r from-[#ff5a5f] to-[#ff8a8f] h-3 transition-all duration-200" style="width: 0%"></div>
-          </div>
-          <div class="flex justify-between text-xs mono">
-            <span id="dl-current" class="text-[#ff5a5f] font-bold">0</span>
-            <span class="text-gray-500">/ ${total}</span>
-            <span id="dl-speed" class="text-green-400">preparing...</span>
-          </div>
-          <p class="text-[10px] text-gray-600 text-center mt-4">✨ Files: 1.json to ${total}.json</p>
-        </div>
-      `;
-      document.body.appendChild(overlay);
-      
-      setTimeout(() => {
-        if (typeof lucide !== 'undefined') lucide.createIcons();
-      }, 10);
-      
-      const zip = new JSZip();
-      let completed = 0;
-      let failed = [];
-      const startTime = Date.now();
-      
-      // Process in batches
-      const batchSize = 30;
-      for (let i = 1; i <= total; i += batchSize) {
-        const batch = [];
-        for (let j = i; j < Math.min(i + batchSize, total + 1); j++) {
-          batch.push(j);
-        }
-        
-        await Promise.all(batch.map(async (id) => {
-          try {
-            const meta = await fetchNFT(id);
-            zip.file(`${id}.json`, JSON.stringify(meta, null, 2));
-          } catch (err) {
-            console.error(`Failed ${id}:`, err);
-            failed.push(id);
-            zip.file(`${id}.json`, JSON.stringify({ 
-              tokenId: id, 
-              error: err.message,
-              fetchedAt: new Date().toISOString()
-            }, null, 2));
+
+        if (data.status === "1" && data.result[0].SourceCode) {
+          const zip = new JSZip();
+          const result = data.result[0];
+
+          let sourceCode = result.SourceCode;
+          
+          // চেক করা হচ্ছে সোলেস মাল্টি-ফাইল JSON ফরম্যাটে আছে কিনা
+          if (sourceCode.startsWith('{{') && sourceCode.endsWith('}}')) {
+            sourceCode = sourceCode.slice(1, -1);
+            const parsed = JSON.parse(sourceCode);
+            const sources = parsed.sources || parsed;
+            
+            for (const [filePath, content] of Object.entries(sources)) {
+              zip.file(filePath, content.content);
+            }
+          } else {
+            zip.file(`${result.ContractName || 'Contract'}.sol`, sourceCode);
           }
-          
-          completed++;
-          const progress = (completed / total) * 100;
-          document.getElementById('dl-bar').style.width = `${progress}%`;
-          document.getElementById('dl-current').textContent = completed;
-          
-          const elapsed = (Date.now() - startTime) / 1000;
-          if (elapsed > 0) {
-            const speed = (completed / elapsed).toFixed(1);
-            document.getElementById('dl-speed').textContent = `${speed} files/sec`;
-          }
-        }));
-      }
-      
-      document.getElementById('dl-current').textContent = 'Packaging...';
-      document.getElementById('dl-speed').textContent = 'creating ZIP...';
-      
-      const blob = await zip.generateAsync({ 
-        type: 'blob',
-        compression: 'DEFLATE',
-        compressionOptions: { level: 6 }
-      });
-      
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `cryptodickbutts_1_to_${total}_${Date.now()}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(a.href);
-      
-      overlay.remove();
-      
-      const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
-      if (failed.length > 0) {
-        alert(`✅ ZIP Created!\n\n📊 Stats:\n• Total: ${total} files\n• Time: ${totalTime}s\n• Speed: ${(total/totalTime).toFixed(1)} files/sec\n• Failed: ${failed.length}\n• Failed IDs: ${failed.slice(0, 10).join(', ')}${failed.length > 10 ? '...' : ''}`);
-      } else {
-        alert(`✅ ZIP Created Successfully!\n\n📊 Stats:\n• Total: ${total} files\n• Time: ${totalTime}s\n• Speed: ${(total/totalTime).toFixed(1)} files/sec\n• All files downloaded!`);
-      }
-    }
-    
-    // ======================== RENDER GRID ========================
-    async function renderGrid(page) {
-      const grid = document.getElementById('grid');
-      const loading = document.getElementById('loading');
-      
-      if (!grid) return;
-      
-      grid.innerHTML = '';
-      loading.classList.remove('hidden');
-      
-      const startId = (page - 1) * PER_PAGE + 1;
-      const endId = Math.min(startId + PER_PAGE - 1, TOTAL_NFTS);
-      
-      let loaded = 0;
-      
-      for (let id = startId; id <= endId; id++) {
-        const metadata = await fetchNFT(id);
-        
-        if (metadata) {
-          const risoPreview = await getRisoVersion(id, metadata.image);
-          
-          const card = document.createElement('div');
-          card.className = 'card cursor-pointer animate-in';
-          card.style.animationDelay = `${(id - startId) * 30}ms`;
-          
-          card.innerHTML = `
-            <div class="relative rounded-xl overflow-hidden bg-[#16162a] border border-white/10 hover:border-[#ff5a5f]/50 transition-all">
-              <img 
-                src="${risoPreview}" 
-                alt="${metadata.name}"
-                class="w-full aspect-square object-cover transition-transform duration-500 group-hover:scale-105"
-                loading="lazy"
-                onerror="console.error('❌ Image load failed for #${id}'); this.src='https://placehold.co/600x600/1a1a2a/ff5a5f?text=${id}'"
-              />
-              <div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent p-3">
-                <p class="mono text-sm font-bold text-white truncate">${escapeHtml(metadata.name)}</p>
-                <p class="text-[10px] text-[#ff8a8f] mono">#${id}</p>
-              </div>
-            </div>
-          `;
-          
-          card.addEventListener('click', () => openModal(id, metadata));
-          grid.appendChild(card);
-        }
-        
-        loaded++;
-        if (loaded === (endId - startId + 1)) {
-          loading.classList.add('hidden');
-        }
-      }
-    }
-    
-    // ======================== MODAL ========================
-    async function openModal(id, metadata) {
-      const modal = document.getElementById('modal');
-      const modalImg = document.getElementById('modal-img');
-      const modalTitle = document.getElementById('modal-title');
-      const traitsContainer = document.getElementById('modal-traits');
-      const toggleText = document.getElementById('toggle-text');
-      const imgWrapper = document.getElementById('modal-img-wrapper');
-      
-      const originalUrl = metadata.image;
-      const risoUrl = await getRisoVersion(id, originalUrl);
-      
-      currentModalState = { isRiso: true, risoUrl, originalUrl, meta: metadata, id };
-      
-      modalImg.src = risoUrl;
-      modalImg.classList.add('riso-effect');
-      imgWrapper.classList.add('riso-effect');
-      toggleText.innerText = 'RISO MODE';
-      
-      modalTitle.innerText = `${metadata.name} — #${id}`;
-      
-      traitsContainer.innerHTML = '';
-      if (metadata.attributes && metadata.attributes.length > 0) {
-        metadata.attributes.slice(0, 6).forEach(attr => {
-          const div = document.createElement('div');
-          div.className = 'bg-[#1e1e32] rounded-lg p-2.5 border border-white/5';
-          div.innerHTML = `
-            <p class="text-[9px] uppercase tracking-wider text-gray-400">${escapeHtml(attr.trait_type || 'property')}</p>
-            <p class="mono text-sm font-semibold text-[#ff8a8f] truncate">${escapeHtml(attr.value || '—')}</p>
-          `;
-          traitsContainer.appendChild(div);
-        });
-      } else {
-        traitsContainer.innerHTML = '<div class="col-span-2 text-center text-gray-400 text-sm">no traits available</div>';
-      }
-      
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-    
-    function closeModal() {
-      document.getElementById('modal').classList.add('hidden');
-      document.getElementById('modal').classList.remove('flex');
-    }
-    
-    function toggleImageMode() {
-      const modalImg = document.getElementById('modal-img');
-      const toggleText = document.getElementById('toggle-text');
-      const imgWrapper = document.getElementById('modal-img-wrapper');
-      
-      currentModalState.isRiso = !currentModalState.isRiso;
-      
-      if (currentModalState.isRiso) {
-        modalImg.src = currentModalState.risoUrl;
-        modalImg.classList.add('riso-effect');
-        imgWrapper.classList.add('riso-effect');
-        toggleText.innerText = 'RISO MODE';
-      } else {
-        modalImg.src = currentModalState.originalUrl;
-        modalImg.classList.remove('riso-effect');
-        imgWrapper.classList.remove('riso-effect');
-        toggleText.innerText = 'ORIGINAL';
-      }
-    }
-    
-    function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/[&<>]/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m] || m));
-    }
-    
-    // ======================== PAGINATION ========================
-    function updatePage() {
-      document.getElementById('page-input').value = currentPage;
-      renderGrid(currentPage);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    
-    // ======================== EVENT LISTENERS ========================
-    document.getElementById('prev-btn')?.addEventListener('click', () => {
-      if (currentPage > 1) { currentPage--; updatePage(); }
-    });
-    
-    document.getElementById('next-btn')?.addEventListener('click', () => {
-      if (currentPage < TOTAL_PAGES) { currentPage++; updatePage(); }
-    });
-    
-    document.getElementById('page-input')?.addEventListener('change', (e) => {
-      let val = parseInt(e.target.value);
-      if (val >= 1 && val <= TOTAL_PAGES) {
-        currentPage = val;
-        updatePage();
-      } else {
-        e.target.value = currentPage;
-      }
-    });
-    
-    document.getElementById('search-input')?.addEventListener('keydown', async (e) => {
-      if (e.key === 'Enter') {
-        const id = parseInt(e.target.value);
-        if (id >= 1 && id <= TOTAL_NFTS) {
-          const metadata = await fetchNFT(id);
-          if (metadata) await openModal(id, metadata);
+
+          // ABI সেভ করা
+          zip.file("ABI.json", result.ABI);
+
+          const blob = await zip.generateAsync({ type: "blob" });
+          saveAs(blob, `${contract}_SourceCode.zip`);
+          log("সফলভাবে সোর্স কোড এবং ABI ডাউনলোড হয়েছে!");
         } else {
-          alert(`ID must be between 1 and ${TOTAL_NFTS}`);
+          log("ত্রুটি: সোর্স কোড পাওয়া যায়নি অথবা কন্ট্রাক্টটি Verified নয়।");
         }
+      } catch (err) {
+        log(`ত্রুটি: ${err.message}`);
       }
-    });
-    
-    document.getElementById('modal-close')?.addEventListener('click', closeModal);
-    document.getElementById('modal-backdrop')?.addEventListener('click', closeModal);
-    document.getElementById('toggle-original')?.addEventListener('click', toggleImageMode);
-    document.getElementById('download-metadata-btn')?.addEventListener('click', downloadAsZip);
-    
-    // ======================== SDK INIT ========================
-    if (window.elementSdk) {
-      window.elementSdk.init({
-        defaultConfig,
-        onConfigChange: (config) => {
-          document.getElementById('main-title').textContent = config.gallery_title || defaultConfig.gallery_title;
-          document.getElementById('subtitle').textContent = config.subtitle_text || defaultConfig.subtitle_text;
-          document.body.style.fontFamily = `${config.font_family || 'Inter'}, sans-serif`;
-        },
-        mapToCapabilities: (config) => ({
-          recolorables: [
-            { get: () => config.background_color || defaultConfig.background_color, set: (v) => { document.body.style.backgroundColor = v; }},
-            { get: () => config.accent_color || defaultConfig.accent_color, set: (v) => { document.documentElement.style.setProperty('--accent', v); }},
-            { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => { }},
-            { get: () => config.text_color || defaultConfig.text_color, set: (v) => { }},
-            { get: () => config.muted_color || defaultConfig.muted_color, set: (v) => { }}
-          ],
-          fontEditable: { get: () => config.font_family || defaultConfig.font_family, set: (v) => { }},
-          fontSizeable: { get: () => config.font_size || defaultConfig.font_size, set: (v) => { }}
-        }),
-        mapToEditPanelValues: (config) => new Map([
-          ['gallery_title', config.gallery_title || defaultConfig.gallery_title],
-          ['subtitle_text', config.subtitle_text || defaultConfig.subtitle_text]
-        ])
-      });
     }
-    
-    // ======================== INIT ========================
-    document.getElementById('total-pages').innerText = TOTAL_PAGES;
-    renderGrid(1);
-    
-    setTimeout(() => {
-      if (typeof lucide !== 'undefined') lucide.createIcons();
-    }, 100);
+
+    // ২. অনচেন মেটাডেটা ও লেয়ার (SVGs/Data URIs) ডাউনলোড
+    async function fetchOnChainLayers() {
+      const alchemyUrl = document.getElementById('apiKey').value.trim();
+      const contract = document.getElementById('contractAddress').value.trim();
+
+      if (!alchemyUrl) {
+        log("ত্রুটি: Alchemy API Key / RPC URL প্রদান করুন!");
+        return;
+      }
+
+      log("Alchemy Provider সেটআপ করা হচ্ছে...");
+      const provider = new ethers.providers.JsonRpcProvider(alchemyUrl);
+
+      // স্ট্যান্ডার্ড ERC721 tokenURI ফাংশনের জন্য মিনিমাল ABI
+      const abi = [
+        "function tokenURI(uint256 tokenId) view returns (string)",
+        "function totalSupply() view returns (uint256)"
+      ];
+
+      const nftContract = new ethers.Contract(contract, abi, provider);
+
+      try {
+        log("অনচেন লেয়ার প্রসেস শুরু হচ্ছে (টোকেন ID 1 থেকে 10 ফেচ করা হচ্ছে)...");
+        const zip = new JSZip();
+        const layersFolder = zip.folder("layers");
+
+        // টেস্ট করার জন্য ১০টি টোকেন চেক করা হচ্ছে (প্রয়োজনে সংখ্যা বাড়াতে পারেন)
+        for (let i = 1; i <= 10; i++) {
+          try {
+            log(`Token ID ${i} এর অনচেন URI আনা হচ্ছে...`);
+            const uri = await nftContract.tokenURI(i);
+
+            if (uri.startsWith("data:application/json;base64,")) {
+              // Base64 JSON ডিকোড
+              const jsonBase64 = uri.replace("data:application/json;base64,", "");
+              const decodedJson = atob(jsonBase64);
+              const metadata = JSON.parse(decodedJson);
+
+              // JSON মেটাডেটা সেভ
+              layersFolder.file(`token_${i}.json`, JSON.stringify(metadata, null, 2));
+
+              // SVG / Image লেয়ার থাকলে তা আলাদা করে সেভ করা
+              if (metadata.image && metadata.image.startsWith("data:image/svg+xml;base64,")) {
+                const svgBase64 = metadata.image.replace("data:image/svg+xml;base64,", "");
+                const decodedSvg = atob(svgBase64);
+                layersFolder.file(`token_${i}.svg`, decodedSvg);
+              } else if (metadata.image && metadata.image.startsWith("data:image/svg+xml;utf8,")) {
+                const svgText = decodeURIComponent(metadata.image.replace("data:image/svg+xml;utf8,", ""));
+                layersFolder.file(`token_${i}.svg`, svgText);
+              }
+
+              log(`Token ID ${i} সফলভাবে প্রসেস হয়েছে।`);
+            } else {
+              log(`Token ID ${i} Base64 অনচেন ফরম্যাটে নেই: ${uri.substring(0, 30)}...`);
+            }
+          } catch (e) {
+            log(`Token ID ${i} আনার সময়ে সমস্যা হয়েছে।`);
+          }
+        }
+
+        const blob = await zip.generateAsync({ type: "blob" });
+        saveAs(blob, `${contract}_OnChain_Layers.zip`);
+        log("অনচেন মেটাডেটা ও লেয়ার সাকসেসফুলি জিফ (ZIP) ফাইল আকারে ডাউনলোড হয়েছে!");
+
+      } catch (err) {
+        log(`ত্রুটি: ${err.message}`);
+      }
+    }
   </script>
 </body>
 </html>

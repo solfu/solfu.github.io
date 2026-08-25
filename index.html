@@ -1,60 +1,61 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="UTF-8">
-<title>On-Chain Raw Layer Extractor & NFT Generator</title>
+<title>NFT On-Chain Layer Extractor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <style>
-  body { font-family: sans-serif; background: #121212; color: #fff; padding: 20px; }
-  .box { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
-  input, button { width: 100%; padding: 10px; margin: 8px 0; box-sizing: border-box; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 4px; }
-  button { background: #007acc; cursor: pointer; font-weight: bold; }
-  button:hover { background: #005999; }
-  .download-zip-btn { background: #28a745; display: none; margin-top: 15px; }
-  .download-zip-btn:hover { background: #218838; }
-  #log { background: #000; padding: 10px; font-family: monospace; height: 150px; overflow-y: auto; border: 1px solid #333; color: #00ff00; }
-  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
-  .layer-card { border: 1px solid #444; padding: 10px; text-align: center; border-radius: 6px; background: #252525; display: flex; flex-direction: column; align-items: center; justify: space-between; }
-  .layer-card svg { width: 100px; height: 100px; background: #1a1a1a; border-radius: 4px; margin-bottom: 8px; }
-  .layer-card small { display: block; margin-bottom: 8px; word-break: break-word; color: #ccc; }
-  .card-btn { padding: 6px 10px; font-size: 12px; background: #007acc; border: none; border-radius: 4px; color: #fff; cursor: pointer; }
-  .card-btn:hover { background: #005999; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f111a; color: #eceff4; padding: 20px; }
+  .box { background: #1a1c23; padding: 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #2e3440; }
+  input, button { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; background: #2e3440; color: #fff; border: 1px solid #4c566a; border-radius: 6px; font-size: 14px; }
+  button { background: #5e81ac; cursor: pointer; font-weight: bold; border: none; transition: 0.2s; }
+  button:hover { background: #81a1c1; }
+  .download-zip-btn { background: #a3be8c; display: none; margin-top: 15px; color: #2e3440; }
+  .download-zip-btn:hover { background: #8fbcbb; }
+  #log { background: #000; padding: 12px; font-family: monospace; height: 140px; overflow-y: auto; border: 1px solid #3b4252; color: #a3be8c; border-radius: 6px; font-size: 13px; }
+  .layer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+  .layer-card { border: 1px solid #3b4252; padding: 12px; text-align: center; border-radius: 8px; background: #242933; display: flex; flex-direction: column; align-items: center; justify-content: space-between; }
+  .layer-card svg { width: 120px; height: 120px; background: #1a1c23; border-radius: 6px; margin-bottom: 10px; border: 1px solid #3b4252; }
+  .layer-card small { display: block; margin-bottom: 10px; word-break: break-word; color: #d8dee9; font-size: 12px; }
+  .card-btn { padding: 8px 12px; font-size: 12px; background: #5e81ac; border: none; border-radius: 4px; color: #fff; cursor: pointer; width: 100%; }
+  .card-btn:hover { background: #81a1c1; }
 </style>
 </head>
 <body>
-  <h2>🎨 Raw On-Chain Trait/Layer Extractor</h2>
+  <h2>🎨 NFT On-Chain Layer Extractor (EIP-2535 Diamond)</h2>
   
   <div class="box">
-    <h3>1. Network & Contract Setup</h3>
-    <input id="rpcUrl" placeholder="RPC URL (e.g. https://rpc.ankr.com/eth)" value="https://rpc.ankr.com/eth">
-    <input id="contractAddr" placeholder="Diamond Contract Address (0x...)">
+    <h3>১. নেটওয়ার্ক ও কন্ট্রাক্ট ঠিকানা দিন</h3>
+    <input id="rpcUrl" placeholder="RPC URL (যেমন: https://rpc.ankr.com/eth বা Base/Arbitrum RPC)" value="https://rpc.ankr.com/eth">
+    <input id="contractAddr" placeholder="ডিপ্লয়কৃত Diamond Contract Address (0x...)">
   </div>
 
   <div class="box">
-    <h3>2. Raw Layers Extractor</h3>
-    <button onclick="extractAllLayers()">Extract & Show All Layers</button>
-    <button id="zipBtn" class="download-zip-btn" onclick="downloadAllZip()">Download All as ZIP</button>
+    <h3>২. অন-চেইন লেয়ার এক্সট্র্যাক্ট করুন</h3>
+    <button onclick="extractAllLayers()">অন-চেইন লেয়ার এক্সট্র্যাক্ট করুন</button>
+    <button id="zipBtn" class="download-zip-btn" onclick="downloadAllZip()">সবগুলো একসাথে জিপ (ZIP) আকারে ডাউনলোড করুন</button>
   </div>
 
   <div class="box">
-    <h3>3. Console Logs</h3>
-    <div id="log">Ready to extract raw layers...<br></div>
+    <h3>৩. প্রসেস লগ</h3>
+    <div id="log">কন্ট্রাক্ট এড্রেস দিয়ে শুরু করুন...<br></div>
   </div>
 
   <div class="box">
-    <h3>Extracted Layers Preview</h3>
+    <h3>নিচে সবগুলো লেয়ার কার্ড আকারে দেখা যাবে</h3>
     <div id="preview" class="layer-grid"></div>
   </div>
 
 <script>
+  // LibAppStorage এ নির্ধারিত Trait Struct অনুযায়ী ABI
   const CONTRACT_ABI = [
     "function getTrait(uint256 _traitTypeIndex, uint256 _traitIndex) external view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
     "function getTraitAmount(uint256 _traitTypeIndex) external view returns (uint256)"
   ];
 
-  let extractedLayers = []; // Download data store করার জন্য
+  let extractedLayers = [];
 
   function log(msg) {
     const l = document.getElementById('log');
@@ -62,6 +63,7 @@
     l.scrollTop = l.scrollHeight;
   }
 
+  // Raw Pixel Data থেকে SVG তৈরি করার ইঞ্জিনিয়ারিং ফাংশন
   function buildSvgFromPixels(pixels, pixelCount) {
     let rects = "";
     let ptr = 0;
@@ -71,7 +73,9 @@
       for (let j = 0; j < count; j++) {
         const x = ptr % 32;
         const y = Math.floor(ptr / 32);
-        rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" />`;
+        if (color !== "" && color !== "none" && color !== "transparent") {
+          rects += `<rect x="${x}" y="${y}" width="1" height="1" fill="${color}" />`;
+        }
         ptr++;
       }
     }
@@ -82,7 +86,7 @@
     try {
       const rpc = document.getElementById('rpcUrl').value;
       const addr = document.getElementById('contractAddr').value;
-      if (!addr) return alert("Contract address is required!");
+      if (!addr) return alert("কন্ট্রাক্ট এড্রেস দেওয়া বাধ্যতামূলক!");
 
       const previewEl = document.getElementById('preview');
       previewEl.innerHTML = '';
@@ -92,14 +96,15 @@
       const provider = new ethers.providers.JsonRpcProvider(rpc);
       const contract = new ethers.Contract(addr, CONTRACT_ABI, provider);
 
-      log("Connecting to Contract...");
+      log("ব্লকচেইন কন্ট্রাক্টের সাথে যুক্ত হচ্ছে...");
 
-      for (let typeIdx = 0; typeIdx < 10; typeIdx++) {
+      // Trait টাইপ ক্যাটাগরি লুপ (সর্বোচ্চ ১৫টি ক্যাটাগরি পর্যন্ত রিড করবে)
+      for (let typeIdx = 0; typeIdx < 15; typeIdx++) {
         try {
           const totalInType = await contract.getTraitAmount(typeIdx);
           if (totalInType == 0) continue;
 
-          log(`Found Category Index ${typeIdx}: ${totalInType} traits`);
+          log(`ক্যাটাগরি ইনডেক্স ${typeIdx}-এ মোট ${totalInType} টি ট্রেইট পাওয়া গেছে`);
 
           for (let traitIdx = 0; traitIdx < totalInType; traitIdx++) {
             const trait = await contract.getTrait(typeIdx, traitIdx);
@@ -108,48 +113,46 @@
             const folderName = trait.traitType || `Category_${typeIdx}`;
             const fileName = `${trait.traitName || `Trait_${traitIdx}`}.svg`;
 
-            // Data array তে store করে রাখা হচ্ছে
             const layerData = { folderName, fileName, svgContent };
             extractedLayers.push(layerData);
 
-            // UI তে Card আকারে দেখানোর জন্য HTML তৈরি
+            // ওয়েবসাইটে কার্ড আকারে লেয়ার রেন্ডার
             const card = document.createElement('div');
             card.className = 'layer-card';
             card.innerHTML = `
               ${svgContent}
-              <small><b>${folderName}</b><br>${trait.traitName || `Trait_${traitIdx}`}</small>
-              <button class="card-btn" onclick="downloadSingleSvg(${extractedLayers.length - 1})">Download SVG</button>
+              <small><b>টাইপ: ${folderName}</b><br>নাম: ${trait.traitName || `Trait_${traitIdx}`}</small>
+              <button class="card-btn" onclick="downloadSingleSvg(${extractedLayers.length - 1})">SVG ডাউনলোড</button>
             `;
             previewEl.appendChild(card);
           }
         } catch (e) {
+          // কোনো ক্যাটাগরি না থাকলে লুপ থেকে বের হবে
           break;
         }
       }
 
       if (extractedLayers.length > 0) {
-        log(`Extracted total ${extractedLayers.length} layers successfully!`);
+        log(`মোট ${extractedLayers.length} টি অন-চেইন লেয়ার এক্সট্র্যাক্ট করা সম্পন্ন হয়েছে!`);
         document.getElementById('zipBtn').style.display = 'block';
       } else {
-        log("No layers found or error reading traits.");
+        log("কোনো লেয়ার পাওয়া যায়নি। দয়া করে সঠিক Contract Address ও RPC নেটওয়ার্ক নিশ্চিত করুন।");
       }
 
     } catch (err) {
-      log(`Error: ${err.message}`);
+      log(`ত্রুটি: ${err.message}`);
     }
   }
 
-  // সিঙ্গেল SVG ফাইল ডাউনলোড করার ফাংশন
   function downloadSingleSvg(index) {
     const item = extractedLayers[index];
     const blob = new Blob([item.svgContent], { type: "image/svg+xml;charset=utf-8" });
     saveAs(blob, item.fileName);
   }
 
-  // সব ফাইল একসাথে ZIP করে ডাউনলোড করার ফাংশন
   async function downloadAllZip() {
     if (extractedLayers.length === 0) return;
-    log("Compressing layers into ZIP...");
+    log("ফাইলগুলো দিয়ে ZIP কম্প্রেস করা হচ্ছে...");
     const zip = new JSZip();
 
     extractedLayers.forEach(item => {
@@ -157,8 +160,8 @@
     });
 
     const content = await zip.generateAsync({ type: "blob" });
-    saveAs(content, "OnChain_Raw_Layers.zip");
-    log("ZIP file downloaded successfully!");
+    saveAs(content, "NFT_OnChain_Layers.zip");
+    log("ZIP ফাইল ডাউনলোড সম্পন্ন হয়েছে!");
   }
 </script>
 </body>

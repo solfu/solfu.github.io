@@ -3,37 +3,39 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>On-Chain NFT Contract & Layer Downloader</title>
+  <title>Full On-Chain NFT & Contract Downloader</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Ethers.js CDN -->
+  <!-- Ethers.js v5 CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-  <!-- JSZip for Downloading Files -->
+  <!-- JSZip for Archiving -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <!-- FileSaver CDN -->
+  <!-- FileSaver for Downloading -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-6">
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
 
-  <div class="max-w-4xl mx-auto space-y-6">
+  <div class="max-w-5xl mx-auto space-y-6">
     <!-- Header -->
     <header class="text-center py-4 border-b border-slate-700">
-      <h1 class="text-3xl font-bold text-emerald-400">On-Chain NFT Downloader</h1>
-      <p class="text-slate-400 mt-2">Alchemy API ব্যবহার করে কন্ট্রাক্ট সোর্স কোড ও অনচেন লেয়ার ডাউনলোড করুন</p>
+      <h1 class="text-3xl font-bold text-emerald-400">On-Chain NFT & Contract Downloader</h1>
+      <p class="text-slate-400 mt-2">Dynamic Contract Analysis, On-Chain Rendering & Full Asset Downloader</p>
     </header>
 
-    <!-- Form Section -->
+    <!-- Configuration Panel -->
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4 shadow-lg">
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Alchemy API Key / RPC URL</label>
-        <input id="apiKey" type="text" placeholder="https://eth-mainnet.g.alchemy.com/v2/YOUR_API_KEY" 
-               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm">
-      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Alchemy API Key or RPC URL</label>
+          <input id="rpcInput" type="text" placeholder="API Key or https://eth-mainnet.g.alchemy.com/v2/..." 
+                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+        </div>
 
-      <div>
-        <label class="block text-sm font-medium text-slate-300 mb-1">Etherscan API Key (সোর্স কোড ডাউনলোডের জন্য)</label>
-        <input id="etherscanKey" type="text" placeholder="Your Etherscan API Key" 
-               class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Explorer API Key (Etherscan/Basescan etc.)</label>
+          <input id="explorerKey" type="text" placeholder="Your Explorer API Key" 
+                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+        </div>
       </div>
 
       <div>
@@ -42,147 +44,566 @@
                class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
       </div>
 
-      <div class="flex gap-4 pt-2">
-        <button onclick="fetchContractSource()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 font-semibold py-2 px-4 rounded-lg transition">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Start Token ID</label>
+          <input id="startTokenId" type="number" value="0" min="0" 
+                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">End Token ID</label>
+          <input id="endTokenId" type="number" value="10" min="0" 
+                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">IPFS Gateway</label>
+          <input id="ipfsGateway" type="text" value="https://ipfs.io/ipfs/" 
+                 class="w-full px-4 py-2 bg-slate-900 border border-slate-700 rounded-lg focus:outline-none focus:border-emerald-500 text-sm font-mono">
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <button onclick="analyzeContract()" class="bg-amber-600 hover:bg-amber-500 font-semibold py-2 px-4 rounded-lg transition">
+          🔍 Analyze Contract
+        </button>
+        <button onclick="downloadContractSource()" class="bg-emerald-600 hover:bg-emerald-500 font-semibold py-2 px-4 rounded-lg transition">
           1. সোর্স কোড ডাউনলোড
         </button>
-        <button onclick="fetchOnChainLayers()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 font-semibold py-2 px-4 rounded-lg transition">
-          2. অনচেন লেয়ার/মেটাডেটা ডাউনলোড
+        <button onclick="downloadOnChainData()" class="bg-indigo-600 hover:bg-indigo-500 font-semibold py-2 px-4 rounded-lg transition">
+          2. অনচেন ডাটা ও মেটাডেটা ডাউনলোড
         </button>
       </div>
     </div>
 
-    <!-- Status / Console Log -->
+    <!-- Progress Indicator -->
+    <div id="progressContainer" class="hidden bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-2">
+      <div class="flex justify-between text-sm font-medium">
+        <span id="progressText" class="text-emerald-400">প্রসেসিং হচ্ছে...</span>
+        <span id="progressPercent" class="text-slate-300">0%</span>
+      </div>
+      <div class="w-full bg-slate-900 rounded-full h-2.5">
+        <div id="progressBar" class="bg-emerald-500 h-2.5 rounded-full w-0 transition-all duration-300"></div>
+      </div>
+    </div>
+
+    <!-- Contract Analysis & Results Grid -->
+    <div id="analysisPanel" class="hidden bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-4">
+      <h2 class="text-lg font-bold text-emerald-400 border-b border-slate-700 pb-2">Contract Analysis Summary</h2>
+      <div id="analysisDetails" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm font-mono"></div>
+      <div id="detectedFunctionsList" class="text-xs font-mono bg-slate-950 p-3 rounded-lg border border-slate-700 text-indigo-300"></div>
+    </div>
+
+    <!-- Live Console Output -->
     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-2">
-      <h2 class="text-lg font-semibold text-slate-200">স্ট্যাটাস ও আউটপুট Logs Log</h2>
-      <pre id="logConsole" class="bg-slate-950 p-4 rounded-lg text-emerald-400 text-xs font-mono h-48 overflow-y-auto whitespace-pre-wrap">ওয়েবসাইট রেডি... API কী দিন এবং ডাউনলোড শুরু করুন।</pre>
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-slate-200">স্ট্যাটাস ও আউটপুট Logs</h2>
+        <button onclick="clearLogs()" class="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-1 rounded">Clear Logs</button>
+      </div>
+      <pre id="logConsole" class="bg-slate-950 p-4 rounded-lg text-emerald-400 text-xs font-mono h-56 overflow-y-auto whitespace-pre-wrap">ওয়েবসাইট রেডি... API কী দিন এবং প্রসেস শুরু করুন।</pre>
     </div>
   </div>
 
   <script>
-    function log(message) {
+    // -------------------------------------------------------------
+    // GLOBAL STATE & HELPER UTILITIES
+    // -------------------------------------------------------------
+    let state = {
+      provider: null,
+      contractAddress: '',
+      verified: false,
+      isProxy: false,
+      implementationAddress: null,
+      abi: [],
+      detectedRenderFunctions: [],
+      contractInfo: {}
+    };
+
+    const KNOWN_RENDER_FUNCTIONS = [
+      'tokenURI(uint256)', 'uri(uint256)', 'dataURI(uint256)', 'svg(uint256)',
+      'generateSVG(uint256)', 'render(uint256)', 'image(uint256)', 'metadata(uint256)',
+      'tokenMetadata(uint256)', 'getTokenURI(uint256)', 'constructTokenURI(uint256)',
+      'buildMetadata(uint256)', 'buildSVG(uint256)', 'getSVG(uint256)'
+    ];
+
+    function log(msg) {
       const consoleEl = document.getElementById('logConsole');
-      consoleEl.innerText += `\n[${new Date().toLocaleTimeString()}] ${message}`;
+      consoleEl.innerText += `\n[${new Date().toLocaleTimeString()}] ${msg}`;
       consoleEl.scrollTop = consoleEl.scrollHeight;
     }
 
-    // ১. স্মার্ট কন্ট্রাক্টের সোর্স কোড এবং ABI ডাউনলোড
-    async function fetchContractSource() {
-      const contract = document.getElementById('contractAddress').value.trim();
-      const etherscanKey = document.getElementById('etherscanKey').value.trim();
+    function clearLogs() {
+      document.getElementById('logConsole').innerText = 'Logs cleared.';
+    }
 
-      if (!etherscanKey) {
-        log("ত্রুটি: Etherscan API Key প্রদান করুন!");
-        return;
-      }
+    function setProgress(percent, text) {
+      const container = document.getElementById('progressContainer');
+      const bar = document.getElementById('progressBar');
+      const percentEl = document.getElementById('progressPercent');
+      const textEl = document.getElementById('progressText');
 
-      log(`কন্ট্রাক্ট সোর্স কোড ফেচ করা হচ্ছে: ${contract}`);
+      container.classList.remove('hidden');
+      bar.style.width = `${percent}%`;
+      percentEl.innerText = `${Math.round(percent)}%`;
+      if (text) textEl.innerText = text;
+    }
 
-      try {
-        const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${contract}&apikey=${etherscanKey}`;
-        const response = await fetch(url);
-        const data = await response.json();
+    function hideProgress() {
+      document.getElementById('progressContainer').classList.add('hidden');
+    }
 
-        if (data.status === "1" && data.result[0].SourceCode) {
-          const zip = new JSZip();
-          const result = data.result[0];
+    function resolveRpcProvider() {
+      const input = document.getElementById('rpcInput').value.trim();
+      if (!input) throw new Error("Alchemy API Key বা RPC URL প্রদান করুন!");
 
-          let sourceCode = result.SourceCode;
-          
-          // চেক করা হচ্ছে সোলেস মাল্টি-ফাইল JSON ফরম্যাটে আছে কিনা
-          if (sourceCode.startsWith('{{') && sourceCode.endsWith('}}')) {
-            sourceCode = sourceCode.slice(1, -1);
-            const parsed = JSON.parse(sourceCode);
-            const sources = parsed.sources || parsed;
-            
-            for (const [filePath, content] of Object.entries(sources)) {
-              zip.file(filePath, content.content);
-            }
-          } else {
-            zip.file(`${result.ContractName || 'Contract'}.sol`, sourceCode);
-          }
-
-          // ABI সেভ করা
-          zip.file("ABI.json", result.ABI);
-
-          const blob = await zip.generateAsync({ type: "blob" });
-          saveAs(blob, `${contract}_SourceCode.zip`);
-          log("সফলভাবে সোর্স কোড এবং ABI ডাউনলোড হয়েছে!");
-        } else {
-          log("ত্রুটি: সোর্স কোড পাওয়া যায়নি অথবা কন্ট্রাক্টটি Verified নয়।");
-        }
-      } catch (err) {
-        log(`ত্রুটি: ${err.message}`);
+      if (input.startsWith("http://") || input.startsWith("https://")) {
+        return new ethers.providers.JsonRpcProvider(input);
+      } else {
+        // Assume raw Alchemy API Key for Ethereum Mainnet
+        return new ethers.providers.JsonRpcProvider(`https://eth-mainnet.g.alchemy.com/v2/${input}`);
       }
     }
 
-    // ২. অনচেন মেটাডেটা ও লেয়ার (SVGs/Data URIs) ডাউনলোড
-    async function fetchOnChainLayers() {
-      const alchemyUrl = document.getElementById('apiKey').value.trim();
-      const contract = document.getElementById('contractAddress').value.trim();
+    async function fetchWithCorsProxy(url) {
+      const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+      const res = await fetch(proxyUrl);
+      return await res.json();
+    }
 
-      if (!alchemyUrl) {
-        log("ত্রুটি: Alchemy API Key / RPC URL প্রদান করুন!");
+    // Safe UTF-8 / Base64 Helpers
+    function decodeBase64Utf8(base64Str) {
+      try {
+        const clean = base64Str.replace(/\s/g, '').replace(/-/g, '+').replace(/_/g, '/');
+        const binary = atob(clean);
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+        return new TextDecoder().decode(bytes);
+      } catch (e) {
+        throw new Error("Base64 Decoding Failed: " + e.message);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 1. CONTRACT INSPECTION & PROXY DETECTION
+    // -------------------------------------------------------------
+    async function analyzeContract() {
+      try {
+        log("কন্ট্রাক্ট এনালাইসিস শুরু হচ্ছে...");
+        state.provider = resolveRpcProvider();
+        state.contractAddress = ethers.utils.getAddress(document.getElementById('contractAddress').value.trim());
+
+        const network = await state.provider.getNetwork();
+        const code = await state.provider.getCode(state.contractAddress);
+
+        if (code === "0x") {
+          throw new Error("প্রদত্ত এড্রেসে কোনো স্মার্ট কন্ট্রাক্ট নেই (EOA Address)!");
+        }
+
+        state.contractInfo = {
+          address: state.contractAddress,
+          chainId: network.chainId,
+          networkName: network.name
+        };
+
+        // Check ERC721 metadata standard functions dynamically
+        const minimalAbi = [
+          "function name() view returns (string)",
+          "function symbol() view returns (string)",
+          "function totalSupply() view returns (uint256)"
+        ];
+        const basicContract = new ethers.Contract(state.contractAddress, minimalAbi, state.provider);
+
+        try { state.contractInfo.name = await basicContract.name(); } catch (e) { state.contractInfo.name = "N/A"; }
+        try { state.contractInfo.symbol = await basicContract.symbol(); } catch (e) { state.contractInfo.symbol = "N/A"; }
+        try { state.contractInfo.totalSupply = (await basicContract.totalSupply()).toString(); } catch (e) { state.contractInfo.totalSupply = "Unknown"; }
+
+        // Proxy Detection (EIP-1967 Storage Slots)
+        const IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc";
+        const rawImpl = await state.provider.getStorageAt(state.contractAddress, IMPLEMENTATION_SLOT);
+        if (rawImpl && rawImpl !== "0x0000000000000000000000000000000000000000000000000000000000000000") {
+          state.isProxy = true;
+          state.implementationAddress = ethers.utils.getAddress("0x" + rawImpl.slice(26));
+          log(`প্রক্সি কন্ট্রাক্ট শনাক্ত করা হয়েছে! Implementation: ${state.implementationAddress}`);
+        } else {
+          state.isProxy = false;
+          state.implementationAddress = null;
+        }
+
+        // Fetch Source / ABI from Explorer
+        await fetchSourceAndABI();
+
+        // Display Analysis UI
+        const panel = document.getElementById('analysisPanel');
+        const details = document.getElementById('analysisDetails');
+        const funcList = document.getElementById('detectedFunctionsList');
+
+        panel.classList.remove('hidden');
+        details.innerHTML = `
+          <div><span class="text-slate-400">Chain ID:</span> ${state.contractInfo.chainId} (${state.contractInfo.networkName})</div>
+          <div><span class="text-slate-400">Name:</span> ${state.contractInfo.name}</div>
+          <div><span class="text-slate-400">Symbol:</span> ${state.contractInfo.symbol}</div>
+          <div><span class="text-slate-400">Total Supply:</span> ${state.contractInfo.totalSupply}</div>
+          <div><span class="text-slate-400">Verified:</span> ${state.verified ? '✅ Yes' : '❌ No'}</div>
+          <div><span class="text-slate-400">Proxy:</span> ${state.isProxy ? `Yes (${state.implementationAddress.substring(0,8)}...)` : 'No'}</div>
+        `;
+
+        funcList.innerHTML = `<b>Detected On-Chain Rendering Functions:</b><br>` + 
+          (state.detectedRenderFunctions.length > 0 
+            ? state.detectedRenderFunctions.map(f => `✓ ${f}`).join('<br>') 
+            : 'No standard view rendering functions detected in ABI. Will use fallback calls.');
+
+        log("কন্ট্রাক্ট এনালাইসিস সম্পন্ন হয়েছে।");
+      } catch (err) {
+        log(`এনালাইসিস এরর: ${err.message}`);
+      }
+    }
+
+    async function fetchSourceAndABI() {
+      const explorerKey = document.getElementById('explorerKey').value.trim();
+      const targetAddr = state.implementationAddress || state.contractAddress;
+
+      if (!explorerKey) {
+        log("Etherscan API Key দেওয়া হয়নি, পাবলিক মেথড আবিষ্কারে লিমিটেড ইন্টারফেস ব্যবহার করা হবে।");
+        state.verified = false;
         return;
       }
 
-      log("Alchemy Provider সেটআপ করা হচ্ছে...");
-      const provider = new ethers.providers.JsonRpcProvider(alchemyUrl);
-
-      // স্ট্যান্ডার্ড ERC721 tokenURI ফাংশনের জন্য মিনিমাল ABI
-      const abi = [
-        "function tokenURI(uint256 tokenId) view returns (string)",
-        "function totalSupply() view returns (uint256)"
-      ];
-
-      const nftContract = new ethers.Contract(contract, abi, provider);
-
       try {
-        log("অনচেন লেয়ার প্রসেস শুরু হচ্ছে (টোকেন ID 1 থেকে 10 ফেচ করা হচ্ছে)...");
+        const url = `https://api.etherscan.io/api?module=contract&action=getsourcecode&address=${targetAddr}&apikey=${explorerKey}`;
+        const data = await fetchWithCorsProxy(url);
+
+        if (data.status === "1" && data.result && data.result[0] && data.result[0].ABI !== "Contract source code not verified") {
+          state.verified = true;
+          state.rawSourceResult = data.result[0];
+          state.abi = JSON.parse(data.result[0].ABI);
+
+          // Dynamic Function Discovery
+          state.detectedRenderFunctions = state.abi
+            .filter(f => f.type === 'function' && (f.stateMutability === 'view' || f.stateMutability === 'pure'))
+            .map(f => `${f.name}(${f.inputs.map(i => i.type).join(',')})`)
+            .filter(sig => KNOWN_RENDER_FUNCTIONS.some(k => sig.startsWith(k.split('(')[0])));
+
+          log("সফলভাবে কন্ট্রাক্ট ABI এবং সোর্স কোড রিসিভ করা হয়েছে।");
+        } else {
+          state.verified = false;
+          log("কন্ট্রাক্টটি Explorer এ ভেরিফাইড নয়।");
+        }
+      } catch (err) {
+        state.verified = false;
+        log(`Explorer API Fetch ব্যর্থ হয়েছে: ${err.message}`);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 2. SOURCE CODE & BYTECODE DOWNLOADER
+    // -------------------------------------------------------------
+    async function downloadContractSource() {
+      try {
+        if (!state.contractAddress) await analyzeContract();
+
+        log("কন্ট্রাক্ট সোর্স কোড জিপ (ZIP) জেনারেট করা হচ্ছে...");
         const zip = new JSZip();
-        const layersFolder = zip.folder("layers");
+        const contractFolder = zip.folder("contract");
 
-        // টেস্ট করার জন্য ১০টি টোকেন চেক করা হচ্ছে (প্রয়োজনে সংখ্যা বাড়াতে পারেন)
-        for (let i = 1; i <= 10; i++) {
-          try {
-            log(`Token ID ${i} এর অনচেন URI আনা হচ্ছে...`);
-            const uri = await nftContract.tokenURI(i);
+        const targetAddr = state.implementationAddress || state.contractAddress;
+        const code = await state.provider.getCode(targetAddr);
+        contractFolder.file("bytecode.txt", code);
 
-            if (uri.startsWith("data:application/json;base64,")) {
-              // Base64 JSON ডিকোড
-              const jsonBase64 = uri.replace("data:application/json;base64,", "");
-              const decodedJson = atob(jsonBase64);
-              const metadata = JSON.parse(decodedJson);
+        const info = {
+          address: state.contractAddress,
+          isProxy: state.isProxy,
+          implementation: state.implementationAddress,
+          verified: state.verified,
+          info: state.contractInfo
+        };
+        contractFolder.file("contract-info.json", JSON.stringify(info, null, 2));
 
-              // JSON মেটাডেটা সেভ
-              layersFolder.file(`token_${i}.json`, JSON.stringify(metadata, null, 2));
+        if (state.verified && state.rawSourceResult) {
+          contractFolder.file("ABI.json", JSON.stringify(state.abi, null, 2));
+          const sourceFolder = contractFolder.folder("source");
+          let rawSource = state.rawSourceResult.SourceCode;
 
-              // SVG / Image লেয়ার থাকলে তা আলাদা করে সেভ করা
-              if (metadata.image && metadata.image.startsWith("data:image/svg+xml;base64,")) {
-                const svgBase64 = metadata.image.replace("data:image/svg+xml;base64,", "");
-                const decodedSvg = atob(svgBase64);
-                layersFolder.file(`token_${i}.svg`, decodedSvg);
-              } else if (metadata.image && metadata.image.startsWith("data:image/svg+xml;utf8,")) {
-                const svgText = decodeURIComponent(metadata.image.replace("data:image/svg+xml;utf8,", ""));
-                layersFolder.file(`token_${i}.svg`, svgText);
-              }
-
-              log(`Token ID ${i} সফলভাবে প্রসেস হয়েছে।`);
-            } else {
-              log(`Token ID ${i} Base64 অনচেন ফরম্যাটে নেই: ${uri.substring(0, 30)}...`);
+          if (rawSource.startsWith('{{') && rawSource.endsWith('}}')) {
+            rawSource = rawSource.slice(1, -1);
+            const parsed = JSON.parse(rawSource);
+            const sources = parsed.sources || parsed;
+            for (const [path, obj] of Object.entries(sources)) {
+              sourceFolder.file(path, obj.content || obj);
             }
-          } catch (e) {
-            log(`Token ID ${i} আনার সময়ে সমস্যা হয়েছে।`);
+          } else if (rawSource.startsWith('{') && rawSource.endsWith('}')) {
+            const parsed = JSON.parse(rawSource);
+            const sources = parsed.sources || parsed;
+            for (const [path, obj] of Object.entries(sources)) {
+              sourceFolder.file(path, obj.content || obj);
+            }
+          } else {
+            sourceFolder.file(`${state.rawSourceResult.ContractName || 'Contract'}.sol`, rawSource);
           }
+          log("ভেরিফাইড সোর্স কোড যুক্ত করা হয়েছে।");
+        } else {
+          log("স সতর্কবার্তা: ভেরিফাইড সোর্স কোড না থাকায় শুধু বাইটকোড ও ইনফো সেভ করা হলো।");
         }
 
         const blob = await zip.generateAsync({ type: "blob" });
-        saveAs(blob, `${contract}_OnChain_Layers.zip`);
-        log("অনচেন মেটাডেটা ও লেয়ার সাকসেসফুলি জিফ (ZIP) ফাইল আকারে ডাউনলোড হয়েছে!");
-
+        saveAs(blob, `${state.contractAddress}_ContractSource.zip`);
+        log("সফলভাবে সোর্স কোড জিপ ফাইল ডাউনলোড হয়েছে!");
       } catch (err) {
-        log(`ত্রুটি: ${err.message}`);
+        log(`সোর্স কোড ডাউনলোডে ত্রুটি: ${err.message}`);
       }
+    }
+
+    // -------------------------------------------------------------
+    // 3. FULL ON-CHAIN METADATA & SVG EXTRACTOR ENGINE
+    // -------------------------------------------------------------
+    async function downloadOnChainData() {
+      try {
+        state.provider = resolveRpcProvider();
+        state.contractAddress = ethers.utils.getAddress(document.getElementById('contractAddress').value.trim());
+
+        const startToken = parseInt(document.getElementById('startTokenId').value);
+        const endToken = parseInt(document.getElementById('endTokenId').value);
+        const ipfsGateway = document.getElementById('ipfsGateway').value.trim();
+
+        if (startToken > endToken) throw new Error("Start Token ID অবশ্যই End Token ID এর চেয়ে ছোট হতে হবে!");
+
+        log(`অনচেন ডাটা ফেচিং শুরু হচ্ছে (Token Range: ${startToken} to ${endToken})...`);
+        const zip = new JSZip();
+        const rootFolder = zip.folder(`NFT_${state.contractAddress.substring(0,8)}`);
+        const rawFolder = rootFolder.folder("raw");
+        const metadataFolder = rootFolder.folder("metadata");
+        const svgFolder = rootFolder.folder("svg");
+        const imagesFolder = rootFolder.folder("images");
+        const traitsFolder = rootFolder.folder("traits");
+
+        const allTraits = [];
+        let successCount = 0;
+        let failCount = 0;
+
+        const totalToProcess = endToken - startToken + 1;
+
+        for (let tokenId = startToken; tokenId <= endToken; tokenId++) {
+          const currentStep = tokenId - startToken + 1;
+          setProgress((currentStep / totalToProcess) * 100, `Processing Token ID: ${tokenId} (${currentStep}/${totalToProcess})`);
+
+          try {
+            log(`-----------------------------------`);
+            log(`[Token ID ${tokenId}] ফেচিং শুরু...`);
+
+            // Execute Multi-Method Discovery Fallback Strategy
+            const renderResult = await fetchTokenRawResponse(state.contractAddress, tokenId);
+
+            if (!renderResult || !renderResult.rawResponse) {
+              throw new Error("কোনো মেথড থেকেই ডাটা পাওয়া যায়নি (Call Reverted or Empty)");
+            }
+
+            // Save Raw Response
+            rawFolder.file(`token_${tokenId}_${renderResult.methodUsed}.txt`, renderResult.rawResponse);
+
+            // Parse Metadata & URIs
+            const parsedData = await parseURIResponse(renderResult.rawResponse, ipfsGateway);
+
+            if (parsedData.metadata) {
+              metadataFolder.file(`token_${tokenId}.json`, JSON.stringify(parsedData.metadata, null, 2));
+
+              if (parsedData.metadata.attributes) {
+                allTraits.push({ tokenId, attributes: parsedData.metadata.attributes });
+              }
+            }
+
+            // SVG / Image Extraction
+            if (parsedData.svgContent) {
+              svgFolder.file(`token_${tokenId}.svg`, parsedData.svgContent);
+              
+              // Extract Embedded Base64 Images inside SVG
+              const embeddedImages = extractEmbeddedImagesFromSVG(parsedData.svgContent);
+              embeddedImages.forEach((img, idx) => {
+                imagesFolder.file(`token_${tokenId}_embedded_${idx + 1}.${img.ext}`, img.data, { base64: true });
+              });
+            }
+
+            log(`[Token ID ${tokenId}] সফলভাবে প্রসেস করা হয়েছে (Method: ${renderResult.methodUsed})`);
+            successCount++;
+          } catch (tokenErr) {
+            log(`[Token ID ${tokenId}] FAILED - Reason: ${tokenErr.message}`);
+            failCount++;
+          }
+
+          // Rate Limit Safeguard Delay
+          await new Promise(r => setTimeout(r, 150));
+        }
+
+        // Save Summary Traits
+        if (allTraits.length > 0) {
+          traitsFolder.file("traits.json", JSON.stringify(allTraits, null, 2));
+        }
+
+        // Create README Summary File
+        const readmeContent = `
+==================================================
+ON-CHAIN NFT DOWNLOAD SUMMARY
+==================================================
+Contract Address : ${state.contractAddress}
+Network Chain ID : ${state.contractInfo.chainId || 'Unknown'}
+Processed Range  : Token ID ${startToken} to ${endToken}
+Successful Tokens: ${successCount}
+Failed Tokens    : ${failCount}
+Verified Contract: ${state.verified ? 'YES' : 'NO'}
+Proxy Contract   : ${state.isProxy ? 'YES' : 'NO'}
+
+Folder Structure:
+- /contract : Source code, ABI, and Bytecode
+- /raw      : Original unparsed contract responses
+- /metadata : Extracted JSON metadata
+- /svg      : Standalone SVG vectors
+- /images   : Extracted embedded raster assets
+- /traits   : Extracted NFT attributes
+==================================================
+        `;
+        rootFolder.file("README.txt", readmeContent.trim());
+
+        log("জিফ (ZIP) ফাইল প্রস্তুত করা হচ্ছে...");
+        const blob = await zip.generateAsync({ type: "blob" });
+        saveAs(blob, `${state.contractAddress}_OnChain_NFT_Data.zip`);
+
+        hideProgress();
+        log(`স্ট্যাটাস: ডাউনলোড সম্পন্ন! (সফল: ${successCount}, ব্যর্থ: ${failCount})`);
+      } catch (err) {
+        hideProgress();
+        log(`অনচেন ডাটা ডাউনলোডে গুরুতর এরর: ${err.message}`);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 4. DYNAMIC CONTRACT CALL & FALLBACK STRATEGY ENGINE
+    // -------------------------------------------------------------
+    async function fetchTokenRawResponse(contractAddr, tokenId) {
+      const candidateMethods = [
+        "tokenURI(uint256)",
+        "uri(uint256)",
+        "dataURI(uint256)",
+        "svg(uint256)",
+        "render(uint256)",
+        "generateSVG(uint256)",
+        "image(uint256)",
+        "metadata(uint256)"
+      ];
+
+      for (const methodSig of candidateMethods) {
+        try {
+          const contract = new ethers.Contract(
+            contractAddr, 
+            [`function ${methodSig} view returns (string)`], 
+            state.provider
+          );
+          const methodName = methodSig.split('(')[0];
+          const response = await contract[methodName](tokenId);
+
+          if (response && response.length > 0) {
+            return { methodUsed: methodName, rawResponse: response };
+          }
+        } catch (e) {
+          // Silent continue to try next candidate method
+        }
+      }
+
+      // Raw eth_call Fallback using Signature Hash (tokenURI selector: 0xc87b56dd)
+      try {
+        const selector = "0xc87b56dd";
+        const encodedTokenId = ethers.utils.defaultAbiCoder.encode(["uint256"], [tokenId]).slice(2);
+        const rawData = await state.provider.call({
+          to: contractAddr,
+          data: selector + encodedTokenId
+        });
+
+        if (rawData && rawData !== "0x") {
+          const decoded = ethers.utils.defaultAbiCoder.decode(["string"], rawData)[0];
+          return { methodUsed: "eth_call_raw", rawResponse: decoded };
+        }
+      } catch (e) {
+        // Fallback failed
+      }
+
+      return null;
+    }
+
+    // -------------------------------------------------------------
+    // 5. PARSER, DECODER AND SVG / IMAGE EXTRACTIONS
+    // -------------------------------------------------------------
+    async function parseURIResponse(rawUri, ipfsGateway) {
+      let metadata = null;
+      let svgContent = null;
+
+      // Handle Data URIs
+      if (rawUri.startsWith("data:")) {
+        if (rawUri.includes("application/json;base64,")) {
+          const jsonStr = decodeBase64Utf8(rawUri.split("application/json;base64,")[1]);
+          metadata = JSON.parse(jsonStr);
+        } else if (rawUri.includes("application/json;utf8,") || rawUri.includes("application/json,")) {
+          const jsonStr = decodeURIComponent(rawUri.split("application/json,")[1] || rawUri.split("utf8,")[1]);
+          metadata = JSON.parse(jsonStr);
+        } else if (rawUri.includes("image/svg+xml;base64,")) {
+          svgContent = decodeBase64Utf8(rawUri.split("image/svg+xml;base64,")[1]);
+        } else if (rawUri.includes("image/svg+xml;utf8,") || rawUri.includes("image/svg+xml,")) {
+          svgContent = decodeURIComponent(rawUri.split("image/svg+xml,")[1] || rawUri.split("utf8,")[1]);
+        }
+      } else if (rawUri.startsWith("ipfs://") || rawUri.startsWith("ar://") || rawUri.startsWith("http")) {
+        // External HTTP / IPFS Link Handling
+        let targetUrl = rawUri;
+        if (rawUri.startsWith("ipfs://")) targetUrl = rawUri.replace("ipfs://", ipfsGateway);
+        if (rawUri.startsWith("ar://")) targetUrl = rawUri.replace("ar://", "https://arweave.net/");
+
+        try {
+          const res = await fetch(targetUrl);
+          const contentType = res.headers.get("content-type");
+
+          if (contentType && contentType.includes("application/json")) {
+            metadata = await res.json();
+          } else {
+            const text = await res.text();
+            if (text.trim().startsWith("<svg")) svgContent = text;
+          }
+        } catch (e) {
+          log(`External URI Fetch Warning: ${e.message}`);
+        }
+      } else if (rawUri.trim().startsWith("<svg")) {
+        // Raw Direct SVG Output
+        svgContent = rawUri;
+      }
+
+      // Check for nested SVG inside metadata
+      if (metadata) {
+        const possibleImageFields = [metadata.image, metadata.image_url, metadata.animation_url, metadata.svg];
+        for (const field of possibleImageFields) {
+          if (field && typeof field === 'string') {
+            if (field.includes("image/svg+xml;base64,")) {
+              svgContent = decodeBase64Utf8(field.split("image/svg+xml;base64,")[1]);
+              break;
+            } else if (field.includes("image/svg+xml;utf8,") || field.includes("image/svg+xml,")) {
+              svgContent = decodeURIComponent(field.split("image/svg+xml,")[1] || field.split("utf8,")[1]);
+              break;
+            } else if (field.trim().startsWith("<svg")) {
+              svgContent = field;
+              break;
+            }
+          }
+        }
+      }
+
+      return { metadata, svgContent };
+    }
+
+    function extractEmbeddedImagesFromSVG(svgStr) {
+      const extracted = [];
+      const regex = /data:image\/(png|jpeg|jpg|webp);base64,([A-Za-z0-9+/=]+)/g;
+      let match;
+
+      while ((match = regex.exec(svgStr)) !== null) {
+        extracted.push({
+          ext: match[1] === 'jpeg' ? 'jpg' : match[1],
+          data: match[2]
+        });
+      }
+      return extracted;
     }
   </script>
 </body>

@@ -3,189 +3,316 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ETH Mainnet NFT Layer Extractor</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.11.1/ethers.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <title>Dynamic SVG Layer & Outfit Viewer</title>
   <style>
-    * { box-sizing: border-box; font-family: sans-serif; }
-    body { background-color: #0f172a; color: #f8fafc; padding: 20px; margin: 0; }
-    .container { max-width: 900px; margin: 0 auto; }
-    h2 { text-align: center; color: #38bdf8; }
-    .card { background: #1e293b; border-radius: 12px; padding: 20px; margin-bottom: 20px; }
-    .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
-    label { font-weight: bold; color: #94a3b8; }
-    input { background: #0f172a; border: 1px solid #334155; color: #fff; padding: 12px; border-radius: 6px; }
-    button { background: #0284c7; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-    button:disabled { background: #475569; }
-    #status { padding: 12px; border-radius: 6px; background: #0f172a; color: #38bdf8; margin-top: 10px; font-size: 13px; font-family: monospace; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin-top: 20px; }
-    .trait-card { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 12px; }
-    .trait-card h4 { margin: 0 0 5px 0; color: #f43f5e; font-size: 14px; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+    }
+    h2 { text-align: center; color: #333; }
+    
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    /* Left Control Panel */
+    .controls {
+      flex: 1;
+      min-width: 320px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    .upload-box {
+      border: 2px dashed #007bff;
+      padding: 15px;
+      text-align: center;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      background: #f8f9fa;
+      cursor: pointer;
+    }
+    .upload-box input { display: none; }
+    .upload-btn {
+      background: #007bff;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 5px;
+      display: inline-block;
+      margin-top: 5px;
+    }
+
+    .layer-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .layer-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #fff;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .layer-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      color: #444;
+    }
+    .frame-select {
+      font-size: 12px;
+      padding: 3px;
+    }
+    .layer-btn-group button {
+      background: #e9ecef;
+      border: 1px solid #ccc;
+      padding: 5px 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    .layer-btn-group button:hover { background: #dee2e6; }
+    .btn-delete { color: red; }
+
+    /* Right Canvas Viewer */
+    .viewer {
+      flex: 1;
+      min-width: 350px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .preview-canvas {
+      position: relative;
+      width: 350px;
+      height: 450px;
+      background: #ffffff;
+      border: 2px solid #333;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    /* SVG Container Layers inside Canvas */
+    .canvas-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .canvas-layer svg {
+      width: 100%;
+      height: 100%;
+    }
   </style>
 </head>
 <body>
 
-<div class="container">
-  <h2>NFT Layer Extractor (ETH Mainnet)</h2>
+  <h2>SVG ডাইনামিক লেয়ার ও আউটফিট প্রিভিউয়ার</h2>
 
-  <div class="card">
-    <div class="input-group">
-      <label>RPC URL</label>
-      <input type="text" id="rpcUrl" value="https://eth-mainnet.g.alchemy.com/v2/alch_Z8JixFk8APZx-qh-dRLZT">
+  <div class="container">
+    <!-- কন্ট্রোল প্যানেল -->
+    <div class="controls">
+      <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+        <span>SVG লেয়ার ফাইল আপলোড করুন (একাধিক নির্বাচন করা যাবে)</span><br>
+        <span class="upload-btn">ফাইল চয়ন করুন</span>
+        <input type="file" id="fileInput" accept=".svg" multiple onchange="handleFileUpload(event)">
+      </div>
+
+      <h3>আপলোড করা লেয়ারসমূহ:</h3>
+      <div class="layer-list" id="layerList">
+        <p style="color: #777; text-align: center;">কোনো লেয়ার নেই। SVG আপলোড করুন।</p>
+      </div>
     </div>
-    <div class="input-group">
-      <label>Contract Address</label>
-      <input type="text" id="contractAddress" value="0x312be6a98441f9f6e3f6246b13ca19701e0ac3b9">
+
+    <!-- আউটফিট প্রিভিউ ক্যানভাস -->
+    <div class="viewer">
+      <h3>আউটফিট প্রিভিউ</h3>
+      <div class="preview-canvas" id="previewCanvas">
+        <!-- আপলোড করা SVG লেয়ারগুলো এখানে ডাইনামিকভাবে আসবে -->
+      </div>
     </div>
-    <div style="display: flex; gap: 10px;">
-      <button id="fetchBtn" onclick="startExtraction()">১. লেয়ার ফেচ করুন</button>
-      <button id="downloadBtn" onclick="downloadZip()" disabled>২. ZIP ডাউনলোড করুন</button>
-    </div>
-    <div id="status">স্ট্যাটাস দেখার জন্য বাটনে চাপ দিন...</div>
   </div>
 
-  <div class="card">
-    <h3>সংগৃহীত লেয়ারসমূহ (<span id="count">0</span>)</h3>
-    <div class="grid" id="layerGrid"></div>
-  </div>
-</div>
+  <script>
+    let layers = []; // সমস্ত লেয়ার জমা রাখার অ্যারে
 
-<script>
-  let extractedLayers = [];
+    // SVG ফাইল আপলোড হ্যান্ডলার
+    function handleFileUpload(event) {
+      const files = Array.from(event.target.files);
+      if (!files.length) return;
 
-  // ডায়মন্ড ফেসটের একাধিক ইন্টারফেস মেথড
-  const ABI = [
-    "function traitTypes(uint256, uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount))",
-    "function getTraitType(uint256) view returns (tuple(string traitName, string traitType, string[] pixels, uint256[] pixelCount)[])",
-    "function hashToSVG(string memory) view returns (string memory)",
-    "function hashToMetadata(string memory, uint256) view returns (string memory)"
-  ];
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const svgContent = e.target.result;
+          createLayerObject(file.name, svgContent);
+        };
+        reader.readAsText(file);
+      });
 
-  function setStatus(msg) {
-    document.getElementById('status').innerText = msg;
-  }
-
-  async function startExtraction() {
-    const rpcUrl = document.getElementById('rpcUrl').value.trim();
-    const address = document.getElementById('contractAddress').value.trim();
-
-    extractedLayers = [];
-    document.getElementById('layerGrid').innerHTML = '';
-    document.getElementById('count').innerText = '0';
-    document.getElementById('fetchBtn').disabled = true;
-
-    try {
-      setStatus("Ethereum Mainnet-এ সংযোগ করা হচ্ছে...");
-      const provider = new ethers.JsonRpcProvider(rpcUrl);
-      const contract = new ethers.Contract(address, ABI, provider);
-
-      let found = 0;
-
-      // মেথড ১: অ্যারে স্ক্যানিং (getTraitType)
-      setStatus("পদ্ধতি ১: ট্রেইট অ্যারে অনুসন্ধান করা হচ্ছে...");
-      for (let l = 0; l < 15; l++) {
-        try {
-          const traits = await contract.getTraitType(l);
-          if (traits && traits.length > 0) {
-            traits.forEach((t, index) => {
-              const item = {
-                layerIndex: l,
-                traitIndex: index,
-                traitName: t.traitName || `Item_${index}`,
-                traitType: t.traitType || `Layer_${l}`,
-                pixels: Array.from(t.pixels || []),
-                pixelCount: (t.pixelCount || []).map(n => n.toString())
-              };
-              extractedLayers.push(item);
-              renderCard(item);
-              found++;
-            });
-            document.getElementById('count').innerText = found;
-          }
-        } catch (e) {
-          // getTraitType না থাকলে পরবর্তী মেথডে যাবে
-        }
-      }
-
-      // মেথড ২: সরাসরি (traitTypes mapping call)
-      if (found === 0) {
-        setStatus("পদ্ধতি ২: ম্যাপিং ইনডেক্স স্ক্যান করা হচ্ছে...");
-        for (let l = 0; l < 12; l++) {
-          for (let t = 0; t < 20; t++) {
-            try {
-              const trait = await contract.traitTypes(l, t);
-              if (trait && (trait.traitName || trait.traitType)) {
-                const item = {
-                  layerIndex: l,
-                  traitIndex: t,
-                  traitName: trait.traitName,
-                  traitType: trait.traitType,
-                  pixels: Array.from(trait.pixels || []),
-                  pixelCount: (trait.pixelCount || []).map(n => n.toString())
-                };
-                extractedLayers.push(item);
-                renderCard(item);
-                found++;
-                document.getElementById('count').innerText = found;
-              }
-            } catch (err) {
-              // রিভার্ট করলে লুপ ব্রেক না করে কন্টিনিউ করবে
-              continue;
-            }
-          }
-        }
-      }
-
-      if (extractedLayers.length > 0) {
-        setStatus(`সফলভাবে ${extractedLayers.length} টি অন-চেইন লেয়ার পাওয়া গেছে!`);
-        document.getElementById('downloadBtn').disabled = false;
-      } else {
-        setStatus("সরাসরি ম্যাপিং রিড ব্লক করা আছে। তবে SVG / Metadata অন-চেইন ফেচ করা সম্ভব।");
-      }
-
-    } catch (err) {
-      console.error(err);
-      setStatus("ত্রুটি: " + (err.reason || err.message));
-    } finally {
-      document.getElementById('fetchBtn').disabled = false;
+      // ইমপুট রিসেট করা
+      event.target.value = '';
     }
-  }
 
-  function renderCard(item) {
-    const grid = document.getElementById('layerGrid');
-    const card = document.createElement('div');
-    card.className = 'trait-card';
-    card.innerHTML = `
-      <h4>${item.traitType}</h4>
-      <p style="margin:4px 0; font-size:13px;"><b>${item.traitName}</b></p>
-      <small style="color:#64748b;">Layer: ${item.layerIndex} | Trait: ${item.traitIndex}</small><br>
-      <small style="color:#38bdf8;">Pixel Data: ${item.pixels.length} items</small>
-    `;
-    grid.appendChild(card);
-  }
+    // SVG থেকে লেয়ার অবজেক্ট তৈরি করা
+    function createLayerObject(filename, rawSvgContent) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(rawSvgContent, "image/svg+xml");
+      const svgElement = doc.querySelector("svg");
 
-  async function downloadZip() {
-    if (extractedLayers.length === 0) return;
-    setStatus("ZIP তৈরি করা হচ্ছে...");
-    const zip = new JSZip();
+      if (!svgElement) {
+        alert(filename + " একটি সঠিক SVG ফাইল নয়!");
+        return;
+      }
 
-    zip.file("all_layers.json", JSON.stringify(extractedLayers, null, 2));
+      // SVG-এর ভেতরের টপ-লেভেল ফ্রেম বা গ্রুপ (<g>) খোঁজা
+      const childGroups = Array.from(svgElement.children).filter(el => el.tagName.toLowerCase() === 'g');
 
-    const folder = zip.folder("traits");
-    extractedLayers.forEach(item => {
-      const catName = (item.traitType || "Layer").replace(/[^a-zA-Z0-9_-]/g, "_");
-      const fileName = `${item.traitIndex}_${(item.traitName || "Trait").replace(/[^a-zA-Z0-9_-]/g, "_")}.json`;
-      folder.folder(catName).file(fileName, JSON.stringify(item, null, 2));
-    });
+      const layerId = 'layer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
+      
+      const layerObj = {
+        id: layerId,
+        name: filename,
+        svgElement: svgElement,
+        frames: childGroups,
+        activeFrameIndex: 0 // ডিফল্ট প্রথম ফ্রেম
+      };
 
-    const blob = await zip.generateAsync({ type: "blob" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "eth_nft_layers.zip";
-    a.click();
-    setStatus("ZIP ডাউনলোড সম্পন্ন হয়েছে!");
-  }
-</script>
+      // অ্যারের শুরুতে যোগ করা (যাতে নতুন আপলোড করা ফাইল উপরে থাকে)
+      layers.push(layerObj);
+      render();
+    }
+
+    // লেয়ার উপরে সেশন (Move Up)
+    function moveUp(index) {
+      if (index < layers.length - 1) {
+        const temp = layers[index];
+        layers[index] = layers[index + 1];
+        layers[index + 1] = temp;
+        render();
+      }
+    }
+
+    // লেয়ার নিচে সেশন (Move Down)
+    function moveDown(index) {
+      if (index > 0) {
+        const temp = layers[index];
+        layers[index] = layers[index - 1];
+        layers[index - 1] = temp;
+        render();
+      }
+    }
+
+    // লেয়ার ডিলিট
+    function deleteLayer(index) {
+      layers.splice(index, 1);
+      render();
+    }
+
+    // ফ্রেম পরিবর্তন করা (যদি SVG তে একাধিক <g> থাকে)
+    function changeFrame(index, frameIdx) {
+      layers[index].activeFrameIndex = parseInt(frameIdx);
+      renderCanvas();
+    }
+
+    // UI রেণ্ডারিং (কন্ট্রোল প্যানেল এবং ক্যানভাস রিফ্রেশ)
+    function render() {
+      renderControls();
+      renderCanvas();
+    }
+
+    // বামপাশের লেয়ার প্যানেল আপডেট
+    function renderControls() {
+      const listContainer = document.getElementById('layerList');
+      listContainer.innerHTML = '';
+
+      if (layers.length === 0) {
+        listContainer.innerHTML = '<p style="color: #777; text-align: center;">কোনো লেয়ার নেই। SVG আপলোড করুন।</p>';
+        return;
+      }
+
+      // অ্যারে রিভার্স আকারে সাজানো (উপরে থাকা লেয়ার প্যানেলেও উপরে থাকবে)
+      for (let i = layers.length - 1; i >= 0; i--) {
+        const layer = layers[i];
+
+        const item = document.createElement('div');
+        item.className = 'layer-item';
+
+        let frameSelectorHTML = '';
+        if (layer.frames.length > 1) {
+          frameSelectorHTML = `<select class="frame-select" onchange="changeFrame(${i}, this.value)">`;
+          layer.frames.forEach((g, idx) => {
+            const frameName = g.getAttribute('id') || `ফ্রেম ${idx + 1}`;
+            const selected = idx === layer.activeFrameIndex ? 'selected' : '';
+            frameSelectorHTML += `<option value="${idx}" ${selected}>${frameName}</option>`;
+          });
+          frameSelectorHTML += `</select>`;
+        } else {
+          frameSelectorHTML = `<span style="font-size:11px; color:#666;">(একক ফ্রেম)</span>`;
+        }
+
+        item.innerHTML = `
+          <div class="layer-info">
+            <span>${layer.name}</span>
+            ${frameSelectorHTML}
+          </div>
+          <div class="layer-btn-group">
+            <button onclick="moveUp(${i})" ${i === layers.length - 1 ? 'disabled' : ''}>▲ উপরে</button>
+            <button onclick="moveDown(${i})" ${i === 0 ? 'disabled' : ''}>▼ নিচে</button>
+            <button class="btn-delete" onclick="deleteLayer(${i})">✕</button>
+          </div>
+        `;
+        listContainer.appendChild(item);
+      }
+    }
+
+    // ক্যানভাসে SVG লেয়ারগুলো ক্রমানুসারে ড্র করা
+    function renderCanvas() {
+      const canvas = document.getElementById('previewCanvas');
+      canvas.innerHTML = '';
+
+      layers.forEach((layer, index) => {
+        const layerDiv = document.createElement('div');
+        layerDiv.className = 'canvas-layer';
+        layerDiv.style.zIndex = index + 1; // Z-Index দিয়ে নিচে-উপরে লেয়ার বসানো
+
+        // ক্লােন করা SVG
+        const clonedSvg = layer.svgElement.cloneNode(true);
+
+        // যদি একাধিক <g> ফ্রেম থাকে, তবে শুধু সক্রিয় ফ্রেমটি দৃশ্যমান রাখা
+        const groups = Array.from(clonedSvg.children).filter(el => el.tagName.toLowerCase() === 'g');
+        if (groups.length > 1) {
+          groups.forEach((g, gIdx) => {
+            if (gIdx !== layer.activeFrameIndex) {
+              g.style.display = 'none';
+            } else {
+              g.style.display = '';
+            }
+          });
+        }
+
+        layerDiv.appendChild(clonedSvg);
+        canvas.appendChild(layerDiv);
+      });
+    }
+  </script>
 
 </body>
 </html>
